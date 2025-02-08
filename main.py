@@ -10,6 +10,11 @@ import numpy as np
 from cqt_loader import IndianCover
 import random
 
+from transformers import Wav2Vec2FeatureExtractor
+from transformers import AutoModel
+import torchaudio.transforms as T
+import librosa
+
 #Setting Randomization Seed for Reproducibility
 random.seed(7)
 torch.manual_seed(7)

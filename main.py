@@ -7,7 +7,7 @@ from config import opt
 from utility import *
 from tqdm import tqdm
 import numpy as np
-from cqt_loader import IndianCoverCQT
+from cqt_loader import IndianCover
 import random
 
 #Setting Randomization Seed for Reproducibility
@@ -26,7 +26,7 @@ def transfer_learning(**kwargs):
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     opt._parse(kwargs)
     
-    test_data = IndianCoverCQT('test')
+    test_data = IndianCover('test')
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
 
     model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)

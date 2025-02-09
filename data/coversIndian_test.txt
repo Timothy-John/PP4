@@ -6,15 +6,15 @@
 3_Yeh Raaten Yeh Mausam_Original
 4_Likhe Jo Khat Tujhe_Cover
 4_Likhe Jo Khat Tujhe_Original
-5_Gulabi Aankhen_Cover
+5_Gulabi Ankhen_Cover
 5_Gulabi Ankhen_Original
 6_Lag Jaa Gale_Cover
 6_Lag Jaa Gale_Original
-7_Aap Ki Nazro Ne Samjha_Original
+7_Aap Ki Nazron Ne Samjha_Original
 7_Aap Ki Nazron Ne Samjha_Cover
-8_Hai Apna Dil To Aawara_Original
+8_Hai Apna Dil To Aawar_Original
 8_Hai Apna Dil To Awara_Cover
-9_Tujhse Naraaz Nahin_Original
+9_Tujhse Naraz Nahi Zindagi_Original
 9_Tujhse Naraz Nahi Zindagi_Cover
 10_Mere Sapno Ki Rani_Cover
 10_Mere Sapno Ki Rani_Original
@@ -26,7 +26,7 @@
 13_Chala Jata Hoon_Original
 14_Ek Ajnabee Haseena Se Mulakat Ho Gai_Cover
 14_Ek Ajnabee Haseena Se Mulakat Ho Gai_Original
-15_Hothon Se Chhu Lo Tum_Cover
+15_Hothon Se Chhulo Tum_Cover
 15_Hothon Se Chhulo Tum_Original
 16_Kajra Mohobbat Wala_Cover
 16_Kajra Mohobbat Wala_Original
@@ -52,13 +52,13 @@
 26_Laal Ishq_Original
 27_In Dino_Cover
 27_In Dino_Original
-28_Baatein Kuch Ankahee Si_Cover
+28_Baatein Kuch Ankahee_Cover
 28_Baatein Kuch Ankahee_Original
 29_Iktara_Cover
 29_Iktara_Original
 30_Teri Deewani_Cover
 30_Teri Deewani_Original
-31_Sajda_Cover
+31_Sajdaa_Cover
 31_Sajdaa_Original
 32_Chand Sifarish_Cover
 32_Chand Sifarish_Original

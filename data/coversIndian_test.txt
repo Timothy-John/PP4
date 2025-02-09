@@ -21,7 +21,7 @@
 11_Neele Neele Ambar Par_Cover
 11_Neele Neele Ambar Par_Original
 12_Pal Pal Dil Ke Paas Tum Rahti Ho_Cover
-12_Pal Pal Dil Ke Paas Tum Rehti Ho_Original
+12_Pal Pal Dil Ke Paas Tum Rahti Ho_Original
 13_Chala Jata Hoon_Cover
 13_Chala Jata Hoon_Original
 14_Ek Ajnabee Haseena Se Mulakat Ho Gai_Cover

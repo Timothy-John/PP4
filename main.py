@@ -67,8 +67,11 @@ def val_slow(model, processor, dataloader, epoch, dataset_name=None):
         with torch.no_grad():
           outputs = model(**inputs, output_hidden_states=True)
         all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
-        embeddings = all_layer_hidden_states.mean(-2)
-        all_embeddings.append(embeddings.cpu().numpy())
+        time_reduced_hidden_states = all_layer_hidden_states.mean(-2)
+        aggregator = nn.Conv1d(in_channels=13, out_channels=1, kernel_size=1, device='cuda')
+        embeddings = aggregator(time_reduced_hidden_states.unsqueeze(0)).squeeze()
+        
+        all_embeddings.append(np.expand_dims(embeddings.cpu().numpy(), axis=0))
         all_labels.append(label)
 
     embeddings = np.concatenate(all_embeddings)

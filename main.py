@@ -21,11 +21,11 @@ torch.manual_seed(7)
 
 def custom_collate(batch):
     data = [item[0][0] for item in batch]
-    sample_rate = [item[0][1] for item in batch]
+    sample_rate = [item[0][1] for item in batch][0]
     labels = [item[1] for item in batch]
-    data = torch.stack(data)
-    labels = torch.LongTensor(labels)
-    sample_rate = torch.LongTensor(sample_rate)
+    #data = torch.stack(data)
+    #labels = torch.LongTensor(labels)
+    #sample_rate = torch.LongTensor(sample_rate)
     return (data, sample_rate), labels
 
 def transfer_learning(**kwargs):
@@ -34,7 +34,7 @@ def transfer_learning(**kwargs):
     opt._parse(kwargs)
     
     test_data = IndianCover('test')
-    test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1)#, collate_fn=custom_collate)
+    test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
 
     model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
     processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
@@ -58,9 +58,9 @@ def val_slow(model, processor, dataloader, epoch, dataset_name=None):
             resampler = None
         # audio file is decoded on the fly
         if resampler is None:
-            input_audio = data[0]
+            input_audio = data
         else:
-            input_audio = resampler(torch.from_numpy(data))[0]
+            input_audio = resampler(torch.from_numpy(data))
         inputs = processor(input_audio, sampling_rate=resample_rate, return_tensors="pt")
 
         inputs = inputs.to(opt.device)
@@ -69,7 +69,7 @@ def val_slow(model, processor, dataloader, epoch, dataset_name=None):
         all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
         embeddings = all_layer_hidden_states.mean(-2)
         all_embeddings.append(embeddings.cpu().numpy())
-        all_labels.append(label.cpu().numpy())
+        all_labels.append(label)
 
     embeddings = np.concatenate(all_embeddings)
     labels = np.concatenate(all_labels)

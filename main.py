@@ -20,11 +20,13 @@ random.seed(7)
 torch.manual_seed(7)
 
 def custom_collate(batch):
-    data = [item[0] for item in batch]
+    data = [item[0][0] for item in batch]
+    sample_rate = [item[0][1] for item in batch]
     labels = [item[1] for item in batch]
     data = torch.stack(data)
     labels = torch.LongTensor(labels)
-    return data, labels
+    sample_rate = torch.LongTensor(sample_rate)
+    return (data, sample_rate), labels
 
 def transfer_learning(**kwargs):
     opt.num_workers = 2
@@ -32,12 +34,12 @@ def transfer_learning(**kwargs):
     opt._parse(kwargs)
     
     test_data = IndianCover('test')
-    test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
+    test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1)#, collate_fn=custom_collate)
 
     model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
     processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
     
-    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
+    test_map, test_top10, test_rank1 = val_slow(model, processor, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 @torch.no_grad()
@@ -56,14 +58,17 @@ def val_slow(model, processor, dataloader, epoch, dataset_name=None):
             resampler = None
         # audio file is decoded on the fly
         if resampler is None:
-            input_audio = data
+            input_audio = data[0]
         else:
-          input_audio = resampler(torch.from_numpy(data))
+            input_audio = resampler(torch.from_numpy(data))[0]
         inputs = processor(input_audio, sampling_rate=resample_rate, return_tensors="pt")
-        
-        input = data.to(opt.device)
-        embedding, _ = model(input)
-        all_embeddings.append(embedding.cpu().numpy())
+
+        inputs = inputs.to(opt.device)
+        with torch.no_grad():
+          outputs = model(**inputs, output_hidden_states=True)
+        all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
+        embeddings = all_layer_hidden_states.mean(-2)
+        all_embeddings.append(embeddings.cpu().numpy())
         all_labels.append(label.cpu().numpy())
 
     embeddings = np.concatenate(all_embeddings)

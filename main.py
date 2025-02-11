@@ -39,11 +39,11 @@ def resampled_audio(resample_rate, sampling_rate, data):
     return input_audio
 
 def transfer_learning(**kwargs):
+    opt._parse(kwargs)
     opt.batch_size = 32
     opt.num_workers = 2
     opt.model = 'MERT'
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    opt._parse(kwargs)
     print(f"Using device: {opt.device}")
     
     train_data = IndianCover('train')
@@ -62,18 +62,18 @@ def transfer_learning(**kwargs):
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
 
     # Training loop
-    num_epochs = 200
+    opt.max_epoch = 200
     best_val_map = 0
     best_model_path = None
-
-    for epoch in range(num_epochs):
+    resample_rate = processor.sampling_rate
+    
+    for epoch in range(opt.max_epoch):
         model.train()
         total_loss = 0
-        for (data, sampling_rate), label in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
+        for (data, sampling_rate), labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}"):
             # make sure the sample_rate aligned
             input_audio = resampled_audio(resample_rate, sampling_rate, data)
-            inputs = processor(input_audio, sampling_rate=resample_rate, return_tensors="pt")
-            inputs, labels = inputs.to(opt.device), labels.to(opt.device)
+            inputs = processor(input_audio, sampling_rate=resample_rate, return_tensors="pt", padding=True)
 
             optimizer.zero_grad()
             outputs = model(**inputs, output_hidden_states=True)
@@ -93,7 +93,7 @@ def transfer_learning(**kwargs):
                 print("No valid triplets in this batch. Skipping.")
 
         avg_loss = total_loss / len(train_loader)
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
+        print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
 
     test_map, test_top10, test_rank1 = val_slow(model, processor, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")

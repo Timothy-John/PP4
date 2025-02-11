@@ -46,8 +46,8 @@ def transfer_learning(**kwargs):
     opt._parse(kwargs)
     print(f"Using device: {opt.device}")
     
-    train_data = IndianCoverCQT('train')
-    val_data = IndianCoverCQT('val')
+    train_data = IndianCover('train')
+    val_data = IndianCover('val')
     test_data = IndianCover('test')
 
     train_loader = DataLoader(train_data, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers, collate_fn=custom_collate)

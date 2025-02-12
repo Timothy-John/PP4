@@ -38,6 +38,39 @@ def resampled_audio(resample_rate, sampling_rate, data):
         input_audio = resampler(torch.from_numpy(data))
     return input_audio
 
+def create_triplets(embeddings, labels):
+    """
+    Create triplets for triplet loss
+    """
+    triplets = []
+    for i in range(len(embeddings)):
+        anchor = embeddings[i].unsqueeze(0)
+        positive_indices = (labels == labels[i]).nonzero().squeeze()
+        negative_indices = (labels != labels[i]).nonzero().squeeze()
+        
+        # Handle cases where indices might be 0-d tensors
+        if positive_indices.dim() == 0:
+            positive_indices = positive_indices.unsqueeze(0)
+        if negative_indices.dim() == 0:
+            negative_indices = negative_indices.unsqueeze(0)
+        
+        if len(positive_indices) > 1 and len(negative_indices) > 0:
+            positive_index = random.choice(positive_indices.tolist())
+            while positive_index == i:
+                positive_index = random.choice(positive_indices.tolist())
+            negative_index = random.choice(negative_indices.tolist())
+            
+            positive = embeddings[positive_index].unsqueeze(0)
+            negative = embeddings[negative_index].unsqueeze(0)
+            
+            triplets.append((anchor, positive, negative))
+    
+    if triplets:
+        anchors, positives, negatives = zip(*triplets)
+        return torch.cat(anchors).to(opt.device), torch.cat(positives).to(opt.device), torch.cat(negatives).to(opt.device)
+    else:
+        return embeddings[0].unsqueeze(0), embeddings[0].unsqueeze(0), embeddings[0].unsqueeze(0)
+
 def transfer_learning(**kwargs):
     opt._parse(kwargs)
     opt.batch_size = 32

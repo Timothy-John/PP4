@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 class IndianCover(Dataset):
     def __init__(self, mode='train', out_length=None):
-        self.indir = '/content/drive/MyDrive/CoverSongDetection/CoverIndian_audio/'
+        self.indir = '/content/drive/MyDrive/CoverSongDetection/CoverIndian_audio_corrected/'
         if mode=='train':
           self.filepath = 'data/coversIndian_train_val.txt'
         elif mode=='val':

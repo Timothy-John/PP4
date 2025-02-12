@@ -73,7 +73,7 @@ def transfer_learning(**kwargs):
         for (data, sampling_rate), labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}"):
             # make sure the sample_rate aligned
             input_audio = resampled_audio(resample_rate, sampling_rate, data)
-            inputs = processor(input_audio, sampling_rate=resample_rate, return_tensors="pt", padding=True)
+            inputs = processor(input_audio, sampling_rate=resample_rate, return_tensors="pt", padding=True).to(opt.device)
 
             optimizer.zero_grad()
             outputs = model(**inputs, output_hidden_states=True)

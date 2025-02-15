@@ -89,7 +89,9 @@ def transfer_learning(**kwargs):
 
     model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
     processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
-    
+
+    # Uncomment below code for Training. Skipping Training due to Resource Constraints
+    """
     # Define loss function and optimizer
     criterion = nn.TripletMarginLoss(margin=0.3)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
@@ -127,7 +129,7 @@ def transfer_learning(**kwargs):
 
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
-
+    """
     test_map, test_top10, test_rank1 = val_slow(model, processor, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 

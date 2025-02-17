@@ -30,7 +30,7 @@ class IndianCover(Dataset):
         set_id = filename.split('_')[0]  # Assuming the set_id is the first part before '_'
         in_path = self.indir +filename[:-int(len(filename.split('_')[-1])+1)] +'/' +filename +'.mp3'
         data, sr = librosa.load(in_path, sr=24000)
-        return (data, sr), int(set_id)
+        return data, int(set_id)
 
 if __name__ == '__main__':
     train_dataset = CQT('train', 394)

@@ -62,7 +62,7 @@ def transfer_learning(**kwargs):
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
 
     # Define loss function and optimizer
-    criterion = nn.TripletMarginLoss(margin=0.3)
+    criterion = torch.nn.CrossEntropyLoss()   #for fine-tuning: nn.TripletMarginLoss(margin=0.3)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
 
     # Training loop
@@ -77,18 +77,19 @@ def transfer_learning(**kwargs):
             inputs, labels = inputs.to(opt.device), labels.to(opt.device)
 
             optimizer.zero_grad()
-            embeddings, _ = model(inputs)
+            scores, _ = model(inputs)
             
             # Create triplets
-            anchor, positive, negative = create_triplets(embeddings, labels)
+            #anchor, positive, negative = create_triplets(embeddings, labels)  #for fine-tuning
             
-            if anchor.size(0) > 0:  # Check if we have valid triplets
-                loss = criterion(anchor, positive, negative)
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-            else:
-                print("No valid triplets in this batch. Skipping.")
+            #if anchor.size(0) > 0:  # Check if we have valid triplets
+            #loss = criterion(anchor, positive, negative)
+            loss = criterion(scores, labels)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            #else:
+            #    print("No valid triplets in this batch. Skipping.")
 
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
@@ -151,7 +152,7 @@ def val_slow(model, dataloader, epoch, dataset_name=None):
 
     for data, label in tqdm(dataloader, desc=f"Evaluating {dataset_name}"):
         input = data.to(opt.device)
-        embedding, _ = model(input)
+        _, embedding = model(input)
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
 

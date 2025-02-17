@@ -10,10 +10,6 @@ import numpy as np
 from cqt_loader import IndianCoverCQT
 import random
 
-#Setting Randomization Seed for Reproducibility
-random.seed(7)
-torch.manual_seed(7)
-
 def custom_collate(batch):
     data = [item[0] for item in batch]
     labels = [item[1] for item in batch]
@@ -62,7 +58,7 @@ def transfer_learning(**kwargs):
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
 
     # Define loss function and optimizer
-    criterion = torch.nn.CrossEntropyLoss()   #for fine-tuning: nn.TripletMarginLoss(margin=0.3)
+    criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
 
     # Training loop
@@ -79,17 +75,10 @@ def transfer_learning(**kwargs):
             optimizer.zero_grad()
             scores, _ = model(inputs)
             
-            # Create triplets
-            #anchor, positive, negative = create_triplets(embeddings, labels)  #for fine-tuning
-            
-            #if anchor.size(0) > 0:  # Check if we have valid triplets
-            #loss = criterion(anchor, positive, negative)
             loss = criterion(scores, labels)
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-            #else:
-            #    print("No valid triplets in this batch. Skipping.")
 
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
@@ -110,39 +99,6 @@ def transfer_learning(**kwargs):
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
     return best_model_path
-
-def create_triplets(embeddings, labels):
-    """
-    Create triplets for triplet loss
-    """
-    triplets = []
-    for i in range(len(embeddings)):
-        anchor = embeddings[i].unsqueeze(0)
-        positive_indices = (labels == labels[i]).nonzero().squeeze()
-        negative_indices = (labels != labels[i]).nonzero().squeeze()
-        
-        # Handle cases where indices might be 0-d tensors
-        if positive_indices.dim() == 0:
-            positive_indices = positive_indices.unsqueeze(0)
-        if negative_indices.dim() == 0:
-            negative_indices = negative_indices.unsqueeze(0)
-        
-        if len(positive_indices) > 1 and len(negative_indices) > 0:
-            positive_index = random.choice(positive_indices.tolist())
-            while positive_index == i:
-                positive_index = random.choice(positive_indices.tolist())
-            negative_index = random.choice(negative_indices.tolist())
-            
-            positive = embeddings[positive_index].unsqueeze(0)
-            negative = embeddings[negative_index].unsqueeze(0)
-            
-            triplets.append((anchor, positive, negative))
-    
-    if triplets:
-        anchors, positives, negatives = zip(*triplets)
-        return torch.cat(anchors).to(opt.device), torch.cat(positives).to(opt.device), torch.cat(negatives).to(opt.device)
-    else:
-        return embeddings[0].unsqueeze(0), embeddings[0].unsqueeze(0), embeddings[0].unsqueeze(0)
 
 @torch.no_grad()
 def val_slow(model, dataloader, epoch, dataset_name=None):

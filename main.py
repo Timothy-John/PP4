@@ -12,68 +12,17 @@ import random
 
 from transformers import Wav2Vec2FeatureExtractor
 from transformers import AutoModel
-import torchaudio.transforms as T
 import librosa
 
 
 def custom_collate(batch):
-    data = [item[0][0] for item in batch]
-    sample_rate = [item[0][1] for item in batch][0]
+    data = [item[0] for item in batch]
     labels = [item[1] for item in batch]
-    #data = torch.stack(data)
-    #labels = torch.LongTensor(labels)
-    #sample_rate = torch.LongTensor(sample_rate)
-    return (data, sample_rate), labels
-
-def resampled_audio(resample_rate, sampling_rate, data):
-    if resample_rate != sampling_rate:
-        print(f'setting rate from {sampling_rate} to {resample_rate}')
-        resampler = T.Resample(sampling_rate, resample_rate)
-    else:
-        resampler = None
-    # audio file is decoded on the fly
-    if resampler is None:
-        input_audio = data
-    else:
-        input_audio = resampler(torch.from_numpy(data))
-    return input_audio
-
-def create_triplets(embeddings, labels):
-    """
-    Create triplets for triplet loss
-    """
-    triplets = []
-    for i in range(len(embeddings)):
-        anchor = embeddings[i].unsqueeze(0)
-        positive_indices = (labels == labels[i]).nonzero().squeeze()
-        negative_indices = (labels != labels[i]).nonzero().squeeze()
-        
-        # Handle cases where indices might be 0-d tensors
-        if positive_indices.dim() == 0:
-            positive_indices = positive_indices.unsqueeze(0)
-        if negative_indices.dim() == 0:
-            negative_indices = negative_indices.unsqueeze(0)
-        
-        if len(positive_indices) > 1 and len(negative_indices) > 0:
-            positive_index = random.choice(positive_indices.tolist())
-            while positive_index == i:
-                positive_index = random.choice(positive_indices.tolist())
-            negative_index = random.choice(negative_indices.tolist())
-            
-            positive = embeddings[positive_index].unsqueeze(0)
-            negative = embeddings[negative_index].unsqueeze(0)
-            
-            triplets.append((anchor, positive, negative))
-    
-    if triplets:
-        anchors, positives, negatives = zip(*triplets)
-        return torch.cat(anchors).to(opt.device), torch.cat(positives).to(opt.device), torch.cat(negatives).to(opt.device)
-    else:
-        return embeddings[0].unsqueeze(0), embeddings[0].unsqueeze(0), embeddings[0].unsqueeze(0)
+    return data, labels
 
 def transfer_learning(**kwargs):
     opt._parse(kwargs)
-    opt.batch_size = 32
+    opt.batch_size = 1
     opt.num_workers = 2
     opt.model = 'MERT'
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -89,13 +38,20 @@ def transfer_learning(**kwargs):
 
     model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
     processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
+    
+    #model.lm_head = nn.Linear(1024, 300).to(opt.device)
+    #print(model)
 
-    # Uncomment below code for Training. Skipping Training due to Resource Constraints
-    """
+    for name, param in model.named_parameters():
+       if '11' in name or 'lm_head' in name:
+           param.requires_grad = True
+       else:
+           param.requires_grad = False
+    
     # Define loss function and optimizer
-    criterion = nn.TripletMarginLoss(margin=0.3)
+    criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
-
+    
     # Training loop
     opt.max_epoch = 200
     best_val_map = 0
@@ -105,31 +61,22 @@ def transfer_learning(**kwargs):
     for epoch in range(opt.max_epoch):
         model.train()
         total_loss = 0
-        for (data, sampling_rate), labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}"):
+        for data, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}"):
             # make sure the sample_rate aligned
-            input_audio = resampled_audio(resample_rate, sampling_rate, data)
-            inputs = processor(input_audio, sampling_rate=resample_rate, return_tensors="pt", padding=True).to(opt.device)
+            inputs = processor(data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
+            labels = torch.LongTensor(labels).to(opt.device)
 
             optimizer.zero_grad()
-            outputs = model(**inputs, output_hidden_states=True)
-            all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
-            time_reduced_hidden_states = all_layer_hidden_states.mean(-2)
-            embeddings = time_reduced_hidden_states[11]  #Taking Embeddings from 11th Layer
+            outputs = model(**inputs, output_hidden_states=False)
             
-            # Create triplets
-            anchor, positive, negative = create_triplets(embeddings, labels)
-            
-            if anchor.size(0) > 0:  # Check if we have valid triplets
-                loss = criterion(anchor, positive, negative)
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-            else:
-                print("No valid triplets in this batch. Skipping.")
+            loss = criterion(outputs.last_hidden_state.mean(-2), labels)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
 
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
-    """
+    
     test_map, test_top10, test_rank1 = val_slow(model, processor, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
@@ -138,25 +85,21 @@ def val_slow(model, processor, dataloader, epoch, dataset_name=None):
     model.eval()
     all_embeddings = []
     all_labels = []
-
-    resample_rate = processor.sampling_rate
-    for (data, sampling_rate), label in tqdm(dataloader, desc=f"Evaluating {dataset_name}"):
-        # make sure the sample_rate aligned
-        input_audio = resampled_audio(resample_rate, sampling_rate, data)
-        inputs = processor(input_audio, sampling_rate=resample_rate, return_tensors="pt")
+    
+    for data, label in tqdm(dataloader, desc=f"Evaluating {dataset_name}"):
+        inputs = processor(data, sampling_rate=24000, return_tensors="pt")
 
         inputs = inputs.to(opt.device)
         with torch.no_grad():
           outputs = model(**inputs, output_hidden_states=True)
+        
         all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
         time_reduced_hidden_states = all_layer_hidden_states.mean(-2)
         embeddings = time_reduced_hidden_states[11]  #Taking Embeddings from 11th Layer
-        #aggregator = nn.Conv1d(in_channels=13, out_channels=1, kernel_size=1, device='cuda')
-        #embeddings = aggregator(time_reduced_hidden_states.unsqueeze(0)).squeeze()
         
         all_embeddings.append(np.expand_dims(embeddings.cpu().numpy(), axis=0))
         all_labels.append(label)
-
+    
     embeddings = np.concatenate(all_embeddings)
     labels = np.concatenate(all_labels)
     

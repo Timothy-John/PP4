@@ -14,7 +14,7 @@ from transformers import Wav2Vec2FeatureExtractor
 from transformers import AutoModel
 import librosa
 
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast, GradScaler
 scaler = GradScaler()
 
 
@@ -42,14 +42,13 @@ def transfer_learning(**kwargs):
     model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
     processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
     
-    #model.lm_head = nn.Linear(1024, 300).to(opt.device)
     #print(model)
 
     for name, param in model.named_parameters():
-       if '11' in name or '10' in name or 'lm_head' in name:
-           param.requires_grad = True
-       else:
+       if '0' in name or '1' in name:
            param.requires_grad = False
+       else:
+           param.requires_grad = True
     
     # Define loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
@@ -71,7 +70,7 @@ def transfer_learning(**kwargs):
             inputs = processor(data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
             labels = torch.LongTensor(labels).to(opt.device)
 
-            with autocast():
+            with autocast('cuda'):
                 outputs = model(**inputs, output_hidden_states=False)
                 loss = criterion(outputs.last_hidden_state.mean(-2), labels)
                 loss = loss / iters_to_accumulate

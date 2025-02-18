@@ -14,6 +14,9 @@ from transformers import Wav2Vec2FeatureExtractor
 from transformers import AutoModel
 import librosa
 
+from torch.cuda.amp import autocast, GradScaler
+scaler = GradScaler()
+
 
 def custom_collate(batch):
     data = [item[0] for item in batch]
@@ -43,7 +46,7 @@ def transfer_learning(**kwargs):
     #print(model)
 
     for name, param in model.named_parameters():
-       if '11' in name or 'lm_head' in name:
+       if '11' in name or '10' in name or 'lm_head' in name:
            param.requires_grad = True
        else:
            param.requires_grad = False
@@ -53,30 +56,48 @@ def transfer_learning(**kwargs):
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
     
     # Training loop
-    opt.max_epoch = 200
+    opt.max_epoch = 100
     best_val_map = 0
     best_model_path = None
-    resample_rate = processor.sampling_rate
     
+    optimizer.zero_grad()
     for epoch in range(opt.max_epoch):
         model.train()
         total_loss = 0
-        for data, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}"):
+        iters_to_accumulate = 10
+        
+        for i, (data, labels) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
             # make sure the sample_rate aligned
             inputs = processor(data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
             labels = torch.LongTensor(labels).to(opt.device)
 
-            optimizer.zero_grad()
-            outputs = model(**inputs, output_hidden_states=False)
-            
-            loss = criterion(outputs.last_hidden_state.mean(-2), labels)
-            loss.backward()
-            optimizer.step()
+            with autocast():
+                outputs = model(**inputs, output_hidden_states=False)
+                loss = criterion(outputs.last_hidden_state.mean(-2), labels)
+                loss = loss / iters_to_accumulate
+            scaler.scale(loss).backward()
             total_loss += loss.item()
+            
+            if (i + 1) % iters_to_accumulate == 0:
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
 
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
+
+        # Evaluate on validation set
+        val_map, val_top10, val_rank1 = val_slow(model, processor, val_loader, epoch, "Indian Validation Set")
+        print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
+
+        if val_map > best_val_map:
+            best_val_map = val_map
+            best_model_path = f"check_points/MERT_transfer_learning_epoch_{epoch+1}.pth"
+            torch.save(model.state_dict(), best_model_path)
+            print(f"New best model saved to {best_model_path}")
     
+    # Load best model and evaluate on test set
+    model.load_state_dict(torch.load(best_model_path))
     test_map, test_top10, test_rank1 = val_slow(model, processor, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
@@ -95,7 +116,7 @@ def val_slow(model, processor, dataloader, epoch, dataset_name=None):
         
         all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
         time_reduced_hidden_states = all_layer_hidden_states.mean(-2)
-        embeddings = time_reduced_hidden_states[11]  #Taking Embeddings from 11th Layer
+        embeddings = time_reduced_hidden_states[11]  #Taking Embeddings from 12th Layer
         
         all_embeddings.append(np.expand_dims(embeddings.cpu().numpy(), axis=0))
         all_labels.append(label)

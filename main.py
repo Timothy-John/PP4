@@ -45,8 +45,8 @@ def transfer_learning(**kwargs):
             param.requires_grad = False
     """
 
-    # Modify the last layer to output embeddings
-    model.fc1 = nn.Linear(300, 300).to(opt.device)  # Change output to 300-dimensional embedding
+    # Modify the last layer to no:of labels in our dataset
+    model.fc1 = nn.Linear(300, 300).to(opt.device)
 
     # Prepare Indian Cover Songs dataset
     train_data = IndianCoverCQT('train')

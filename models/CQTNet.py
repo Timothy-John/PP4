@@ -41,14 +41,26 @@ class CQTNet(BasicModule):
         ]))
         self.pool = nn.AdaptiveMaxPool2d((1, 1))
         self.fc0 = nn.Linear(512, 300)
-        self.fc1 = nn.Linear(300, 10000)
+        self.fc1 = nn.Linear(300, 10000)  # Dummy layer to load pre-trained weights
+        self.fc2 = nn.Linear(600, 200)
+        self.fc3 = nn.Linear(200,1)
 
     def forward(self, x):
         # input [N, C, H, W] (W = 396)
-        N = x.size()[0]
-        x = self.features(x)  # [N, 512, 57, 2~15]
-        x = self.pool(x)
-        x = x.view(N, -1)
-        feature = self.fc0(x)
-        x = self.fc1(feature)
-        return x, feature
+        N = x[0].size()[0]
+        x1 = self.features(x[0])  # [N, 512, 57, 2~15]
+        x1 = self.pool(x1)
+        x1 = x1.view(N, -1)
+        feature1 = self.fc0(x1)
+        
+        x2 = self.features(x[1])  # [N, 512, 57, 2~15]
+        x2 = self.pool(x2)
+        x2 = x2.view(N, -1)
+        feature2 = self.fc0(x2)
+        
+        # combine both features to an FC Layer
+        combined = torch.cat((feature1.view(feature1.size(0), -1),
+                              feature2.view(feature2.size(0), -1)), dim=1)
+        out1 = self.fc2(combined)
+        out2 = self.fc3(out1)
+        return torch.sigmoid(out2)

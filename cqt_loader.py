@@ -1,81 +1,66 @@
-import os
 import torch
-from torch.utils.data import Dataset
-import numpy as np
-import librosa
-from torchvision import transforms
-import random
-import PIL
+from torch import nn
+import torchvision
 import torch.nn.functional as F
+from collections import OrderedDict
+import math
+from .basic_module import BasicModule
 
-class IndianCoverCQT(Dataset):
-    def __init__(self, mode='train', out_length=None):
-        self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/IndianCover_cqt_npy'
-        if mode=='train':
-          self.filepath = 'data/coversIndian_train_val.txt'
-        elif mode=='val':
-          self.filepath = 'data/coversIndian_train_val.txt'
-        else:
-          self.filepath = 'data/coversIndian_test.txt'
-        
-        with open(self.filepath, 'r') as fp:
-            self.file_list = [line.rstrip() for line in fp]
-        self.out_length = out_length
+class CQTNet(BasicModule):
+    def __init__(self):
+        super().__init__()
+        self.features = nn.Sequential(OrderedDict([
+            ('conv0', nn.Conv2d(1, 32, kernel_size=(12, 3), dilation=(1, 1), padding=(6, 0), bias=False)),
+            ('norm0', nn.BatchNorm2d(32)), ('relu0', nn.ReLU(inplace=True)),
+            ('conv1', nn.Conv2d(32, 64, kernel_size=(13, 3), dilation=(1, 2), bias=False)),
+            ('norm1', nn.BatchNorm2d(64)), ('relu1', nn.ReLU(inplace=True)),
+            ('pool1', nn.MaxPool2d((1, 2), stride=(1, 2), padding=(0, 1))),
 
-    def __len__(self):
-        return len(self.file_list)
+            ('conv2', nn.Conv2d(64, 64, kernel_size=(13, 3), dilation=(1, 1), bias=False)),
+            ('norm2', nn.BatchNorm2d(64)), ('relu2', nn.ReLU(inplace=True)),
+            ('conv3', nn.Conv2d(64, 64, kernel_size=(3, 3), dilation=(1, 2), bias=False)),
+            ('norm3', nn.BatchNorm2d(64)), ('relu3', nn.ReLU(inplace=True)),
+            ('pool3', nn.MaxPool2d((1, 2), stride=(1, 2), padding=(0, 1))),
 
-    def __getitem__(self, index):
-        filename = self.file_list[index].strip()
-        set_id = filename.split('_')[0]  # Assuming the set_id is the first part before '_'
-        in_path = os.path.join(self.indir, filename + '.npy')
-        data = np.load(in_path)
-        
-        transform_test = transforms.Compose([
-            lambda x: x.astype(np.float32) / (np.max(np.abs(x)) + 1e-6),
-            lambda x: self.cut_data_front(x, self.out_length),
-            lambda x: torch.Tensor(x),
-            lambda x: x.unsqueeze(0),  # Add channel dimension
-        ])
-        
-        data = transform_test(data)
-        data = self.pad_or_truncate(data, 400, 84)
-        
-        return data, int(set_id)
+            ('conv4', nn.Conv2d(64, 128, kernel_size=(3, 3), dilation=(1, 1), bias=False)),
+            ('norm4', nn.BatchNorm2d(128)), ('relu4', nn.ReLU(inplace=True)),
+            ('conv5', nn.Conv2d(128, 128, kernel_size=(3, 3), dilation=(1, 2), bias=False)),
+            ('norm5', nn.BatchNorm2d(128)), ('relu5', nn.ReLU(inplace=True)),
+            ('pool5', nn.MaxPool2d((1, 2), stride=(1, 2), padding=(0, 1))),
 
-    # Including necessary methods from the CQT class
-    def pad_or_truncate(self, data, target_length, target_freq=84):
-        if data.ndim == 2:
-            data = data.unsqueeze(0)
-        
-        _, freq, current_length = data.shape
-        
-        if freq > target_freq:
-            data = data[:, :target_freq, :]
-        elif freq < target_freq:
-            pad_freq = target_freq - freq
-            data = F.pad(data, (0, 0, 0, pad_freq), mode='constant', value=0)
-        
-        if current_length > target_length:
-            data = data[:, :, :target_length]
-        elif current_length < target_length:
-            pad_time = target_length - current_length
-            data = F.pad(data, (0, pad_time), mode='constant', value=0)
-        
-        return data
+            ('conv6', nn.Conv2d(128, 256, kernel_size=(3, 3), dilation=(1, 1), bias=False)),
+            ('norm6', nn.BatchNorm2d(256)), ('relu6', nn.ReLU(inplace=True)),
+            ('conv7', nn.Conv2d(256, 256, kernel_size=(3, 3), dilation=(1, 2), bias=False)),
+            ('norm7', nn.BatchNorm2d(256)), ('relu7', nn.ReLU(inplace=True)),
+            ('pool7', nn.MaxPool2d((1, 2), stride=(1, 2), padding=(0, 1))),
 
-    def cut_data_front(self, data, out_length):
-        if out_length is not None:
-            if data.shape[1] > out_length:
-                data = data[:, :out_length]
-            else:
-                offset = out_length - data.shape[1]
-                data = np.pad(data, ((0, 0), (0, offset)), "constant")
-        if data.shape[1] < 200:
-            offset = 200 - data.shape[1]
-            data = np.pad(data, ((0, 0), (0, offset)), "constant")
-        return data
+            ('conv8', nn.Conv2d(256, 512, kernel_size=(3, 3), dilation=(1, 1), bias=False)),
+            ('norm8', nn.BatchNorm2d(512)), ('relu8', nn.ReLU(inplace=True)),
+            ('conv9', nn.Conv2d(512, 512, kernel_size=(3, 3), dilation=(1, 2), bias=False)),
+            ('norm9', nn.BatchNorm2d(512)), ('relu9', nn.ReLU(inplace=True)),
+        ]))
+        self.pool = nn.AdaptiveMaxPool2d((1, 1))
+        self.fc0 = nn.Linear(512, 300)
+        self.fc1 = nn.Linear(300, 10000)  # Dummy layer to load pre-trained weights
+        self.fc2 = nn.Linear(600, 200)
+        self.fc3 = nn.Linear(200,1)
 
-if __name__ == '__main__':
-    train_dataset = IndianCoverCQT('train', 394)
-    trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=128, num_workers=12, shuffle=True)
+    def forward(self, x):
+        # input [N, C, H, W] (W = 396)
+        N = x[0].size()[0]
+        x1 = self.features(x[0])  # [N, 512, 57, 2~15]
+        x1 = self.pool(x1)
+        x1 = x1.view(N, -1)
+        feature1 = self.fc0(x1)
+        
+        x2 = self.features(x[1])  # [N, 512, 57, 2~15]
+        x2 = self.pool(x2)
+        x2 = x2.view(N, -1)
+        feature2 = self.fc0(x2)
+        
+        # combine both features to an FC Layer
+        combined = torch.cat((feature1.view(feature1.size(0), -1),
+                              feature2.view(feature2.size(0), -1)), dim=1)
+        out1 = self.fc2(combined)
+        out2 = self.fc3(out1)
+        return torch.sigmoid(out2)

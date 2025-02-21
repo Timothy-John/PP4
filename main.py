@@ -27,7 +27,7 @@ def transfer_learning(**kwargs):
     opt.batch_size = 32
     opt.num_workers = 2
     opt.model = 'CQTNet'
-    opt.load_model_path = '../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
+    opt.load_model_path = '/content/drive/MyDrive/CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
     # opt.load_model_path = '/content/CQTNet/check_points/latest.pth'
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     opt._parse(kwargs)

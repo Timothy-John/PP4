@@ -134,8 +134,8 @@
 225_Rasathi_Cover
 226_Enthaavo_Original
 226_Enthaavo_Cover
-227_Puthumazhayai _Original
-227_Puthumazhayai _Cover
+227_Puthumazhayai_Original
+227_Puthumazhayai_Cover
 228_sadaa paalaya_Original
 228_sadaa paalaya_Cover
 229_Akale aaro paadum_Original

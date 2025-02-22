@@ -21,6 +21,7 @@ scaler = GradScaler()
 def custom_collate_MERT(batch):
     data = [item[0] for item in batch]
     labels = [item[1] for item in batch]
+    labels = torch.LongTensor(labels)
     return data, labels
 def custom_collate_CQTNet(batch):
     data = [item[0] for item in batch]
@@ -31,8 +32,7 @@ def custom_collate_CQTNet(batch):
 
 def transfer_learning(**kwargs):
     opt._parse(kwargs)
-    opt.batch_size = 1
-    opt.num_workers = 2
+    opt.batch_size = 1  #Do Not Change! Supports only BS 1
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {opt.device}")
     
@@ -46,7 +46,7 @@ def transfer_learning(**kwargs):
     train_CQTNet_loader = DataLoader(train_CQTNet_data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate_CQTNet)
     train_MERT_loader = DataLoader(train_MERT_data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate_MERT)
     val_CQTNet_loader = DataLoader(val_CQTNet_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_CQTNet)
-    val_MERT_loader = DataLoader(val_CQTNet_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_MERT)
+    val_MERT_loader = DataLoader(val_MERT_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_MERT)
     test_CQTNet_loader = DataLoader(test_CQTNet_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_CQTNet)
     test_MERT_loader = DataLoader(test_MERT_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_MERT)
 
@@ -90,23 +90,21 @@ def transfer_learning(**kwargs):
         total_loss = 0
         iters_to_accumulate = 10
         
-        for i, (MERT_data, MERT_labels), (CQTNet_data, CQTNet_labels) in enumerate(tqdm(zip(train_MERT_loader,train_CQTNet_loader), desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
+        for i, ((MERT_data, MERT_labels), (CQTNet_data, CQTNet_labels)) in enumerate(tqdm(zip(train_MERT_loader,train_CQTNet_loader), desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
             assert MERT_labels == CQTNet_labels
             
             # make sure the sample_rate aligned
             MERT_inputs = MERT_processor(MERT_data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
             
             with autocast('cuda'):
-                outputs = model(**MERT_inputs, output_hidden_states=False)
+                outputs = MERT_model(**MERT_inputs, output_hidden_states=False)
                 #all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
                 #time_reduced_hidden_states = all_layer_hidden_states.mean(-2)
                 #embeddings = time_reduced_hidden_states[11]  #Taking Embeddings from 12th Layer
-                embeddings = torch.stack(outputs.hidden_states).squeeze().mean(-2)[11]
+                embeddings = outputs.last_hidden_state.squeeze().mean(-2)
             
-            #Need fix
-            data = torch.Tensor(np.expand_dims(np.concatenate((CQTNet_data2.numpy(), np.expand_dims(embeddings.cpu().detach(), axis=0))), axis=0))                
-            
-            data, labels = torch.stack(data).to(opt.device), torch.LongTensor(CQTNet_labels).to(opt.device)
+            data = torch.cat([CQTNet_data.to(opt.device), embeddings.unsqueeze(0).unsqueeze(0).unsqueeze(0)],axis=2).to(opt.device)
+            labels = torch.LongTensor(CQTNet_labels).to(opt.device)
             
             with autocast('cuda'):
                 scores, _ = CQTNet_model(data)
@@ -151,26 +149,24 @@ def val_slow(CQTNet_model, MERT_model, MERT_processor, CQTNet_loader, MERT_loade
     for (MERT_data, MERT_label), (CQTNet_data, CQTNet_label) in tqdm(zip(MERT_loader, CQTNet_loader), desc=f"Evaluating {dataset_name}"):
         assert MERT_label == CQTNet_label
         MERT_inputs = MERT_processor(MERT_data, sampling_rate=24000, return_tensors="pt")
-
+        
         MERT_inputs = MERT_inputs.to(opt.device)
         with torch.no_grad():
-          outputs = MERT_model(**MERT_inputs, output_hidden_states=True)
-    
-        #Need fix
-        data = torch.Tensor(np.expand_dims(np.concatenate((CQTNet_data2.numpy(), np.expand_dims(embeddings.cpu().detach(), axis=0))), axis=0))                
+          outputs = MERT_model(**MERT_inputs, output_hidden_states=False)
+          embeddings = outputs.last_hidden_state.squeeze().mean(-2)
+
+        data = torch.cat([CQTNet_data.to(opt.device), embeddings.unsqueeze(0).unsqueeze(0).unsqueeze(0)],axis=2).to(opt.device)
         
-        data = data.to(opt.device)
         with torch.no_grad():
-            _, embedding = CQTmodel(data)
+            _, embedding = CQTNet_model(data)
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(int(CQTNet_label))
     
     embeddings = np.concatenate(all_embeddings)
-    labels = np.concatenate(all_labels)
-    
     embeddings = norm(embeddings)
+    
     dis2d = -np.matmul(embeddings, embeddings.T)
-    MAP, top10, rank1 = calc_MAP(dis2d, labels)
+    MAP, top10, rank1 = calc_MAP(dis2d, all_labels)
     
     return MAP, top10, rank1
 

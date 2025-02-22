@@ -55,7 +55,7 @@ def transfer_learning(**kwargs):
     MERT_processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
 
     opt.model = 'CQTNet'
-    opt.load_model_path = '/content/drive/MyDrive/CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
+    opt.load_model_path = '../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
     CQTNet_model = getattr(models, opt.model)()
     CQTNet_model.load(opt.load_model_path)
     CQTNet_model.fc1 = nn.Linear(300, 300)

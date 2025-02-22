@@ -48,3 +48,35 @@ class IndianCover(Dataset):
             in_path = self.indir +filename[:-int(len(filename.split('_')[-1])+1)] +'/' +filename +'.mp3'
             data, sr = librosa.load(in_path, sr=24000)
         return data, int(set_id)
+
+    # Including necessary methods from the CQT class
+    def pad_or_truncate(self, data, target_length, target_freq=84):
+        if data.ndim == 2:
+            data = data.unsqueeze(0)
+        
+        _, freq, current_length = data.shape
+        
+        if freq > target_freq:
+            data = data[:, :target_freq, :]
+        elif freq < target_freq:
+            pad_freq = target_freq - freq
+            data = F.pad(data, (0, 0, 0, pad_freq), mode='constant', value=0)
+        
+        if current_length > target_length:
+            data = data[:, :, :target_length]
+        elif current_length < target_length:
+            pad_time = target_length - current_length
+            data = F.pad(data, (0, pad_time), mode='constant', value=0)
+        
+        return data
+
+    def cut_data_front(self, data, out_length):
+        if out_length is not None:
+            if data.shape[1] > out_length:
+                data = data[:, :out_length]
+            else:
+                offset = out_length - data.shape[1]
+                data = np.pad(data, ((0, 0), (0, offset)), "constant")
+        if data.shape[1] < 200:
+            offset = 200 - data.shape[1]
+            data = np.pad(d

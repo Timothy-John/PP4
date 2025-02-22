@@ -158,8 +158,8 @@
 79_Udja Kale Kawan_Cover
 80_Dil Hai Ki Manta Nahin_Original
 80_Dil Hai Ki Manta Nahin_Cover
-81_Khamoshiyan _Original
-81_Khamoshiyan _Cover
+81_Khamoshiyan_Original
+81_Khamoshiyan_Cover
 82_Mere Bina_Original
 82_Mere Bina_Cover
 83_Kabhi jo badal barse_Original
@@ -294,8 +294,8 @@
 147_Udja Kale Kawan_Cover
 148_Dil Hai Ki Manta Nahin_Original
 148_Dil Hai Ki Manta Nahin_Cover
-149_Khamoshiyan _Original
-149_Khamoshiyan _Cover
+149_Khamoshiyan_Original
+149_Khamoshiyan_Cover
 150_Mere Bina_Original
 150_Mere Bina_Cover
 151_Kabhi jo badal barse_Original
@@ -448,8 +448,8 @@
 225_Rasathi_Cover
 226_Enthaavo_Original
 226_Enthaavo_Cover
-227_Puthumazhayai _Original
-227_Puthumazhayai _Cover
+227_Puthumazhayai_Original
+227_Puthumazhayai_Cover
 228_sadaa paalaya_Original
 228_sadaa paalaya_Cover
 229_Akale aaro paadum_Original

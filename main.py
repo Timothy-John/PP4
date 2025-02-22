@@ -32,6 +32,9 @@ def transfer_learning(**kwargs):
     model.load(opt.load_model_path)
     model = model.to(opt.device)
 
+    # Modify the last layer to no:of labels in our dataset
+    model.fc1 = nn.Linear(300, 300).to(opt.device)
+
     # Only 1st conv layer frozen
     for name, param in model.named_parameters():
        if 'conv0' in name:
@@ -44,9 +47,6 @@ def transfer_learning(**kwargs):
         if 'fc0' not in name and 'fc1' not in name:
             param.requires_grad = False
     """
-
-    # Modify the last layer to no:of labels in our dataset
-    model.fc1 = nn.Linear(300, 300).to(opt.device)
 
     # Prepare Indian Cover Songs dataset
     train_data = IndianCoverCQT('train')

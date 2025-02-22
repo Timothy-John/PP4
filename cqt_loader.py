@@ -12,9 +12,9 @@ class IndianCover(Dataset):
     def __init__(self, mode='train', model='CQTNet', out_length=None):
         self.model = model
         if self.model=='MERT':
-            self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/CoverIndian_audio/'
+            self.indir = '../CoverSongDetection_Timothy/CoverIndian_audio/'
         else:
-            self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/IndianCover_cqt_npy'
+            self.indir = '../CoverSongDetection_Timothy/IndianCover_cqt_npy'
         
         if mode=='train':
           self.filepath = 'data/coversIndian_train_val.txt'
@@ -79,4 +79,5 @@ class IndianCover(Dataset):
                 data = np.pad(data, ((0, 0), (0, offset)), "constant")
         if data.shape[1] < 200:
             offset = 200 - data.shape[1]
-            data = np.pad(d
+            data = np.pad(data, ((0, 0), (0, offset)), "constant")
+        return data

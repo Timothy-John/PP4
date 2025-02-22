@@ -9,8 +9,12 @@ import PIL
 import torch.nn.functional as F
 
 class IndianCover(Dataset):
-    def __init__(self, mode='train', out_length=None):
-        self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/CoverIndian_audio/'
+    def __init__(self, mode='train', model='CQTNet', out_length=None):
+        if model=='MERT':
+            self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/CoverIndian_audio/'
+        else:
+            self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/IndianCover_cqt_npy'
+        
         if mode=='train':
           self.filepath = 'data/coversIndian_train_val.txt'
         elif mode=='val':
@@ -31,7 +35,3 @@ class IndianCover(Dataset):
         in_path = self.indir +filename[:-int(len(filename.split('_')[-1])+1)] +'/' +filename +'.mp3'
         data, sr = librosa.load(in_path, sr=24000)
         return data, int(set_id)
-
-if __name__ == '__main__':
-    train_dataset = CQT('train', 394)
-    trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=128, num_workers=12, shuffle=True)

@@ -18,33 +18,56 @@ from torch.amp import autocast, GradScaler
 scaler = GradScaler()
 
 
-def custom_collate(batch):
+def custom_collate_MERT(batch):
     data = [item[0] for item in batch]
     labels = [item[1] for item in batch]
+    return data, labels
+def custom_collate_CQTNet(batch):
+    data = [item[0] for item in batch]
+    labels = [item[1] for item in batch]
+    data = torch.stack(data)
+    labels = torch.LongTensor(labels)
     return data, labels
 
 def transfer_learning(**kwargs):
     opt._parse(kwargs)
     opt.batch_size = 1
     opt.num_workers = 2
-    opt.model = 'MERT'
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {opt.device}")
     
-    train_data = IndianCover('train')
-    val_data = IndianCover('val')
-    test_data = IndianCover('test')
+    train_CQTNet_data = IndianCover('train', 'CQTNet')
+    train_MERT_data = IndianCover('train', 'MERT')
+    val_CQTNet_data = IndianCover('val', 'CQTNet')
+    val_MERT_data = IndianCover('val', 'MERT')
+    test_CQTNet_data = IndianCover('test', 'CQTNet')
+    test_MERT_data = IndianCover('test', 'MERT')
 
-    train_loader = DataLoader(train_data, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers, collate_fn=custom_collate)
-    val_loader = DataLoader(val_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
-    test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
+    train_CQTNet_loader = DataLoader(train_CQTNet_data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate_CQTNet)
+    train_MERT_loader = DataLoader(train_MERT_data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate_MERT)
+    val_CQTNet_loader = DataLoader(val_CQTNet_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_CQTNet)
+    val_MERT_loader = DataLoader(val_CQTNet_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_MERT)
+    test_CQTNet_loader = DataLoader(test_CQTNet_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_CQTNet)
+    test_MERT_loader = DataLoader(test_MERT_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_MERT)
 
-    model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
-    processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
+    # Load pre-trained model
+    MERT_model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
+    MERT_processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
+
+    opt.model = 'CQTNet'
+    opt.load_model_path = '/content/drive/MyDrive/CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
+    CQTNet_model = getattr(models, opt.model)()
+    CQTNet_model.load(opt.load_model_path)
+    CQTNet_model.fc1 = nn.Linear(300, 300)
+    CQTNet_model = CQTNet_model.to(opt.device)
+
+    for name, param in CQTNet_model.named_parameters():
+       if 'conv0' in name:
+           param.requires_grad = False
+       else:
+           param.requires_grad = True
     
-    #print(model)
-
-    for name, param in model.named_parameters():
+    for name, param in MERT_model.named_parameters():
        if '0' in name or '1' in name:
            param.requires_grad = False
        else:
@@ -52,27 +75,42 @@ def transfer_learning(**kwargs):
     
     # Define loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
-    
+    optimizer = torch.optim.Adam(list(MERT_model.parameters()) + list(filter(lambda p: p.requires_grad, CQTNet_model.parameters())), lr=1e-4)
+
     # Training loop
     opt.max_epoch = 100
     best_val_map = 0
-    best_model_path = None
+    best_CQTNet_path = None
+    best_MERT_path = None
     
     optimizer.zero_grad()
     for epoch in range(opt.max_epoch):
-        model.train()
+        CQTNet_model.train()
+        MERT_model.train()
         total_loss = 0
         iters_to_accumulate = 10
         
-        for i, (data, labels) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
+        for i, (MERT_data, MERT_labels), (CQTNet_data, CQTNet_labels) in enumerate(tqdm(zip(train_MERT_loader,train_CQTNet_loader), desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
+            assert MERT_labels == CQTNet_labels
+            
             # make sure the sample_rate aligned
-            inputs = processor(data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
-            labels = torch.LongTensor(labels).to(opt.device)
-
+            MERT_inputs = MERT_processor(MERT_data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
+            
             with autocast('cuda'):
-                outputs = model(**inputs, output_hidden_states=False)
-                loss = criterion(outputs.last_hidden_state.mean(-2), labels)
+                outputs = model(**MERT_inputs, output_hidden_states=False)
+                #all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
+                #time_reduced_hidden_states = all_layer_hidden_states.mean(-2)
+                #embeddings = time_reduced_hidden_states[11]  #Taking Embeddings from 12th Layer
+                embeddings = torch.stack(outputs.hidden_states).squeeze().mean(-2)[11]
+            
+            #Need fix
+            data = torch.Tensor(np.expand_dims(np.concatenate((CQTNet_data2.numpy(), np.expand_dims(embeddings.cpu().detach(), axis=0))), axis=0))                
+            
+            data, labels = torch.stack(data).to(opt.device), torch.LongTensor(CQTNet_labels).to(opt.device)
+            
+            with autocast('cuda'):
+                scores, _ = CQTNet_model(data)
+                loss = criterion(scores, labels)
                 loss = loss / iters_to_accumulate
             scaler.scale(loss).backward()
             total_loss += loss.item()
@@ -82,43 +120,50 @@ def transfer_learning(**kwargs):
                 scaler.update()
                 optimizer.zero_grad()
 
-        avg_loss = total_loss / len(train_loader)
+        avg_loss = total_loss / len(train_CQTNet_loader)
         print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
 
         # Evaluate on validation set
-        val_map, val_top10, val_rank1 = val_slow(model, processor, val_loader, epoch, "Indian Validation Set")
+        val_map, val_top10, val_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, val_CQTNet_loader, val_MERT_loader, epoch, "Indian Validation Set")
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
 
         if val_map > best_val_map:
             best_val_map = val_map
-            best_model_path = f"check_points/MERT_transfer_learning_epoch_{epoch+1}.pth"
-            torch.save(model.state_dict(), best_model_path)
-            print(f"New best model saved to {best_model_path}")
+            best_CQTNet_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
+            torch.save(CQTNet_model.state_dict(), best_CQTNet_path)
+            best_MERT_path = f"check_points/MERT_transfer_learning_epoch_{epoch+1}.pth"
+            torch.save(MERT_model.state_dict(), best_MERT_path)
+            print(f"New best model saved to {best_CQTNet_path} and {best_MERT_path}")
     
     # Load best model and evaluate on test set
-    model.load_state_dict(torch.load(best_model_path))
-    test_map, test_top10, test_rank1 = val_slow(model, processor, test_loader, -1, "Indian Test Set")
+    CQTNet_model.load_state_dict(torch.load(best_CQTNet_path))
+    MERT_model.load_state_dict(torch.load(best_MERT_path))
+    test_map, test_top10, test_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, val_CQTNet_loader, val_MERT_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 @torch.no_grad()
-def val_slow(model, processor, dataloader, epoch, dataset_name=None):
-    model.eval()
+def val_slow(CQTNet_model, MERT_model, MERT_processor, CQTNet_loader, MERT_loader, epoch, dataset_name=None):
+    CQTNet_model.eval()
+    MERT_model.eval()
     all_embeddings = []
     all_labels = []
     
-    for data, label in tqdm(dataloader, desc=f"Evaluating {dataset_name}"):
-        inputs = processor(data, sampling_rate=24000, return_tensors="pt")
+    for (MERT_data, MERT_label), (CQTNet_data, CQTNet_label) in tqdm(zip(MERT_loader, CQTNet_loader), desc=f"Evaluating {dataset_name}"):
+        assert MERT_label == CQTNet_label
+        MERT_inputs = MERT_processor(MERT_data, sampling_rate=24000, return_tensors="pt")
 
-        inputs = inputs.to(opt.device)
+        MERT_inputs = MERT_inputs.to(opt.device)
         with torch.no_grad():
-          outputs = model(**inputs, output_hidden_states=True)
+          outputs = MERT_model(**MERT_inputs, output_hidden_states=True)
+    
+        #Need fix
+        data = torch.Tensor(np.expand_dims(np.concatenate((CQTNet_data2.numpy(), np.expand_dims(embeddings.cpu().detach(), axis=0))), axis=0))                
         
-        all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
-        time_reduced_hidden_states = all_layer_hidden_states.mean(-2)
-        embeddings = time_reduced_hidden_states[11]  #Taking Embeddings from 12th Layer
-        
-        all_embeddings.append(np.expand_dims(embeddings.cpu().numpy(), axis=0))
-        all_labels.append(label)
+        data = data.to(opt.device)
+        with torch.no_grad():
+            _, embedding = CQTmodel(data)
+        all_embeddings.append(embedding.cpu().numpy())
+        all_labels.append(int(CQTNet_label))
     
     embeddings = np.concatenate(all_embeddings)
     labels = np.concatenate(all_labels)

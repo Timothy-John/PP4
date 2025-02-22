@@ -56,8 +56,8 @@
 61_Jashn-E-Bahaaraa_Cover
 62_Tere Bina_Original
 62_Tere Bina_Cover
-63_ Guzarish_Original
-63_ Guzarish_Cover
+63_Guzarish_Original
+63_Guzarish_Cover
 64_Luka Chuppi_Original
 64_Luka Chuppi_Cover
 65_Dil Se Re_Cover
@@ -194,8 +194,8 @@
 130_Jashn-E-Bahaaraa_Cover
 131_Tere Bina_Original
 131_Tere Bina_Cover
-132_ Guzarish_Original
-132_ Guzarish_Cover
+132_Guzarish_Original
+132_Guzarish_Cover
 133_Luka Chuppi_Original
 133_Luka Chuppi_Cover
 134_Dil Se Re_Cover

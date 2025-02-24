@@ -1,0 +1,156 @@
+import os
+import glob
+import json
+import random
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+from loaders import get_loader_model
+
+from cqt_loader import IndianCoverCQT
+from cqtnet_utility import *
+
+
+WINDOW_SECONDS = 2
+STEP_SECONDS = 1
+
+DATASET2CLASSES = {
+    "env": ['airplane', 'breathing', 'brushing_teeth', 'can_opening', 'car_horn', 'cat', 'chainsaw', 'chirping_birds', 'church_bells', 'clapping', 'clock_alarm', 'clock_tick', 'coughing', 'cow', 'crackling_fire', 'crickets', 'crow', 'crying_baby', 'dog', 'door_wood_creaks', 'door_wood_knock', 'drinking_sipping', 'engine', 'fireworks', 'footsteps', 'frog', 'glass_breaking', 'hand_saw', 'helicopter', 'hen', 'insects', 'keyboard_typing', 'laughing', 'mouse_click', 'pig', 'pouring_water', 'rain', 'rooster', 'sea_waves', 'sheep', 'siren', 'sneezing', 'snoring', 'thunderstorm', 'toilet_flush', 'train', 'vacuum_cleaner', 'washing_machine', 'water_drops', 'wind'],
+    "genres": ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"],
+    "speech_music": ["speech", "music"],
+}
+
+
+def shuffle(a, b):
+    c = list(zip(a, b))
+    random.shuffle(c)
+    return zip(*c)
+
+
+def load_dataset(model_name, win_seconds=WINDOW_SECONDS, step_seconds=STEP_SECONDS):
+    dataset_base_folder = '/content/drive/MyDrive/CoverSongDetection_Timothy/Encodec/dataset'
+    indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/CoverIndian_audio'
+    filepath = 'data/coversIndian_list.txt'
+    with open(filepath, 'r') as fp:
+        file_list = [line.rstrip() for line in fp]
+    
+    loader_model = get_loader_model(model_name, win_seconds, step_seconds)
+    if not os.path.exists(dataset_base_folder):
+        os.mkdir(dataset_base_folder)
+        for filename in file_list:
+            in_path = indir +filename[:-int(len(filename.split('_')[-1])+1)] +'/' +filename +'.mp3'
+            X = loader_model.load(in_path)
+            if len(X) == 0:
+                print(f"No files found")
+                continue
+            else:
+                X = np.array(X)
+                np.save(dataset_base_folder+"/"+filename+".npy", X)
+
+
+def get_MNIST_train_model(classes, dataset_name, model_name, channels=128, feature_len=128, kernel_size=5, max_pool_size=5):
+    model = torch.nn.Sequential(
+        torch.nn.Conv1d(channels, feature_len, kernel_size),
+        torch.nn.ReLU(),
+        torch.nn.MaxPool1d(max_pool_size),
+        torch.nn.Conv1d(feature_len, feature_len*2, kernel_size),
+        torch.nn.ReLU(),
+        torch.nn.MaxPool1d(max_pool_size),
+        torch.nn.Dropout(),
+        torch.nn.Flatten(),
+        torch.nn.LazyLinear(classes)
+    )
+    #print(model)
+    model.load(f'/content/drive/MyDrive/CoverSongDetection_Timothy/Encodec/Encodec_pretrained/classify_{dataset_name}_{model_name}_model.pth')
+    model."fc1" = nn.Linear(300, 300)
+    model = model.to("cuda:0")
+    
+
+
+def check_step(loader, classification_model, epoch):
+    classification_model.eval()
+    all_embeddings = []
+    all_labels = []
+    for inputs, label in loader:
+        embedding = classification_model(inputs.to("cuda:0"))."Flatten".cpu()
+        all_embeddings.append(embedding.cpu().numpy())
+        all_labels.append(label.cpu().numpy())
+    embeddings = np.concatenate(all_embeddings)
+    labels = np.concatenate(all_labels)
+    embeddings = norm(embeddings)
+    dis2d = -np.matmul(embeddings, embeddings.T)
+    return calc_MAP(dis2d, labels)
+
+
+def train_loop(classification_model, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=256):
+    criterion = criterion()
+    optimizer = optimizer(classification_model.parameters(), lr=lr)
+    train_data = IndianCoverCQT('train')
+    val_data = IndianCoverCQT('val')
+    test_data = IndianCoverCQT('test')
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_data, batch_size=1, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
+    all_train_loss = []
+    all_val_map = []
+    all_train_acc = []
+    best_val_map = -float("inf")
+    best_model = None
+    train_val_filepath = 'data/coversIndian_train_val.txt'
+    with open(train_val_filepath, 'r') as fp:
+        train_val_file_list = [line.rstrip() for line in fp]
+    test_filepath = 'data/coversIndian_test.txt'
+    with open(test_filepath, 'r') as fp:
+        test_file_list = [line.rstrip() for line in fp]
+    # Perform training
+    for epoch in range(epochs):
+        # Iterate over train set
+        for inputs, labels in train_loader:
+            optimizer.zero_grad()
+            outputs = classification_model(inputs.to("cuda:0")).cpu()
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+        # Compute train metrics
+        t_loss = loss.item()
+        all_train_loss.append(t_loss)
+        # Compute validation accuracy and loss and save best model
+        with torch.no_grad():
+            val_map, val_top10, val_rank1 = check_step(val_loader, classification_model, epoch)
+        # Compute validation metrics
+        if val_map > best_val_map:
+            best_val_map = val_map
+            best_val_top10 = val_top10
+            best_val_rank1 = val_rank1
+            best_model = classification_model.state_dict()
+        all_val_map.append(val_map)
+        if epoch % 10 == 0:
+            print(f'{epoch}/{epochs} - Train Loss: {t_loss}. Val MAP: {val_map}. Val Top10: {val_top10}. Val Rank1: {val_rank1}')
+    print(f'\nBEST MODEL:: Val MAP: {best_val_map}. Val Top10: {best_val_top10}. Val Rank1: {best_val_rank1}\n')
+    classification_model.load_state_dict(best_model)
+    with torch.no_grad():
+        test_map, test_top10, test_rank1 = check_step(test_loader, classification_model, -1)
+
+    print(f'Test MAP: {test_map}. Test Top10: {test_top10}. Test Rank1: {test_rank1}')
+    return all_train_loss, best_val_map, best_val_top10, best_val_rank1, test_map, test_top10, test_rank1, best_model
+
+
+def perform_training(dataset_name, model_name, results_folder="results"):
+    classes = DATASET2CLASSES[dataset_name]
+    load_dataset(model_name)
+    model = get_MNIST_train_model(len(classes), dataset_name, model_name)
+    train_loss, best_val_map, best_val_top10, best_val_rank1, test_map, test_top10, test_rank1, best_model = train_loop(model)
+    torch.save(best_model, f"Transfer_Learning_classify_{dataset_name}_{model_name}_model.pth")
+    if not os.path.exists(results_folder):
+        os.mkdir(results_folder)
+    with open(f"{results_folder}/classify_{dataset_name}_{model_name}.json", "w") as f:
+        json.dump(
+            {
+                'train_loss': train_loss,
+                'best_val_MAP': best_val_map,
+                'best_val_Top10': best_val_top10,
+                'best_val_Rank1': best_val_rank1,
+                'test_MAP': test_map,
+                'test_Top10': test_top10,
+                'test_Rank1': test_rank1
+            }, f)

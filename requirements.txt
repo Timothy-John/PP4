@@ -1,8 +1,4 @@
-torch
 numpy
 librosa
-tqdm
-torchvision
-pydub
-torchnet
-fire
+matplotlib
+git+https://git@github.com/facebookresearch/encodec#egg=encodec

@@ -28,8 +28,8 @@ def shuffle(a, b):
 
 
 def load_dataset(model_name, win_seconds=WINDOW_SECONDS, step_seconds=STEP_SECONDS):
-    dataset_base_folder = '/content/drive/MyDrive/CoverSongDetection_Timothy/Encodec/dataset'
-    indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/CoverIndian_audio'
+    dataset_base_folder = '../CoverSongDetection_Timothy/Encodec/dataset'
+    indir = '../CoverSongDetection_Timothy/CoverIndian_audio'
     filepath = 'data/coversIndian_list.txt'
     with open(filepath, 'r') as fp:
         file_list = [line.rstrip() for line in fp]
@@ -38,7 +38,7 @@ def load_dataset(model_name, win_seconds=WINDOW_SECONDS, step_seconds=STEP_SECON
     if not os.path.exists(dataset_base_folder):
         os.mkdir(dataset_base_folder)
         for filename in file_list:
-            in_path = indir +filename[:-int(len(filename.split('_')[-1])+1)] +'/' +filename +'.mp3'
+            in_path = indir+"/"+filename[:-int(int(len(filename.split('_')[-1]))+1)] +'/' +filename +'.mp3'
             X = loader_model.load(in_path)
             if len(X) == 0:
                 print(f"No files found")

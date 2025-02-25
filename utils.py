@@ -28,7 +28,7 @@ def shuffle(a, b):
 
 
 def load_dataset(model_name, win_seconds=WINDOW_SECONDS, step_seconds=STEP_SECONDS):
-    dataset_base_folder = '../CoverSongDetection_Timothy/Encodec/dataset'
+    dataset_base_folder = f'../CoverSongDetection_Timothy/Encodec/dataset/{model_name}'
     indir = '../CoverSongDetection_Timothy/CoverIndian_audio'
     filepath = 'data/coversIndian_list.txt'
     with open(filepath, 'r') as fp:
@@ -82,12 +82,12 @@ def check_step(loader, classification_model, epoch):
     return calc_MAP(dis2d, labels)
 
 
-def train_loop(classification_model, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=256):
+def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=256):
     criterion = criterion()
     optimizer = optimizer(classification_model.parameters(), lr=lr)
-    train_data = IndianCoverCQT('train')
-    val_data = IndianCoverCQT('val')
-    test_data = IndianCoverCQT('test')
+    train_data = IndianCoverCQT('train', model_name)
+    val_data = IndianCoverCQT('val', model_name)
+    test_data = IndianCoverCQT('test', model_name)
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=1, shuffle=False)
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
@@ -139,7 +139,7 @@ def perform_training(dataset_name, model_name, results_folder="results"):
     classes = DATASET2CLASSES[dataset_name]
     load_dataset(model_name)
     model = get_MNIST_train_model(len(classes), dataset_name, model_name)
-    train_loss, best_val_map, best_val_top10, best_val_rank1, test_map, test_top10, test_rank1, best_model = train_loop(model)
+    train_loss, best_val_map, best_val_top10, best_val_rank1, test_map, test_top10, test_rank1, best_model = train_loop(model, model_name)
     torch.save(best_model, f"Transfer_Learning_classify_{dataset_name}_{model_name}_model.pth")
     if not os.path.exists(results_folder):
         os.mkdir(results_folder)

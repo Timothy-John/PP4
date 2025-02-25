@@ -63,10 +63,11 @@ def get_MNIST_train_model(classes, dataset_name, model_name, channels=128, featu
         torch.nn.MaxPool1d(max_pool_size),
         torch.nn.Dropout(),
         torch.nn.Flatten(),
+        torch.nn.LazyLinear(300),
         torch.nn.LazyLinear(classes)
     )
     model.load_state_dict(torch.load(f'../CoverSongDetection_Timothy/Encodec/Encodec_pretrained/classify_{dataset_name}_{model_name}_model.pth', weights_only=True))
-    model[8] = torch.nn.Linear(1280,300)
+    model[9] = torch.nn.LazyLinear(300)
     #print(model)
     return model.to("cuda:0")
     
@@ -76,7 +77,7 @@ def check_step(loader, classification_model, epoch):
     all_embeddings = []
     all_labels = []
     for inputs, label in loader:
-        embedding = classification_model[:8](inputs.to("cuda:0")).cpu()
+        embedding = classification_model[:9](inputs.to("cuda:0")).cpu()
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
     embeddings = np.concatenate(all_embeddings)

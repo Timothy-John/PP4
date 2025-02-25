@@ -26,6 +26,11 @@ def shuffle(a, b):
     random.shuffle(c)
     return zip(*c)
 
+def custom_collate(batch):
+    data = batch[0][0]
+    labels = [batch[0][1]] * data.shape[0]
+    return torch.Tensor(data), torch.LongTensor(labels)
+
 
 def load_dataset(model_name, win_seconds=WINDOW_SECONDS, step_seconds=STEP_SECONDS):
     dataset_base_folder = f'../CoverSongDetection_Timothy/Encodec/dataset/{model_name}'
@@ -61,18 +66,17 @@ def get_MNIST_train_model(classes, dataset_name, model_name, channels=128, featu
         torch.nn.LazyLinear(classes)
     )
     model.load_state_dict(torch.load(f'../CoverSongDetection_Timothy/Encodec/Encodec_pretrained/classify_{dataset_name}_{model_name}_model.pth', weights_only=True))
-    model[8] = torch.nn.LazyLinear(300)
+    model[8] = torch.nn.Linear(1280,300)
     #print(model)
-    return model
+    return model.to("cuda:0")
     
-
 
 def check_step(loader, classification_model, epoch):
     classification_model.eval()
     all_embeddings = []
     all_labels = []
     for inputs, label in loader:
-        embedding = classification_model(inputs.to("cuda:0"))[7].cpu()
+        embedding = classification_model[:8](inputs.to("cuda:0")).cpu()
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
     embeddings = np.concatenate(all_embeddings)
@@ -81,16 +85,16 @@ def check_step(loader, classification_model, epoch):
     dis2d = -np.matmul(embeddings, embeddings.T)
     return calc_MAP(dis2d, labels)
 
-
-def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=256):
+#only for batch_size=1 (1 data is treated as 256 sub-batches)
+def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=1):
     criterion = criterion()
     optimizer = optimizer(classification_model.parameters(), lr=lr)
     train_data = IndianCoverCQT(model_name, 'train')
     val_data = IndianCoverCQT(model_name, 'val')
     test_data = IndianCoverCQT(model_name, 'test')
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=1, shuffle=False)
-    test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, collate_fn=custom_collate)
+    val_loader = DataLoader(val_data, batch_size=1, shuffle=False, collate_fn=custom_collate)
+    test_loader = DataLoader(test_data, batch_size=1, shuffle=False, collate_fn=custom_collate)
     all_train_loss = []
     all_val_map = []
     all_train_acc = []

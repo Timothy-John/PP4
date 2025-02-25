@@ -85,9 +85,9 @@ def check_step(loader, classification_model, epoch):
 def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=256):
     criterion = criterion()
     optimizer = optimizer(classification_model.parameters(), lr=lr)
-    train_data = IndianCoverCQT('train', model_name)
-    val_data = IndianCoverCQT('val', model_name)
-    test_data = IndianCoverCQT('test', model_name)
+    train_data = IndianCoverCQT(model_name, 'train')
+    val_data = IndianCoverCQT(model_name, 'val')
+    test_data = IndianCoverCQT(model_name, 'test')
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=1, shuffle=False)
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False)

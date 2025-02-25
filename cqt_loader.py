@@ -9,7 +9,7 @@ import PIL
 import torch.nn.functional as F
 
 class IndianCoverCQT(Dataset):
-    def __init__(self, mode='train', model_name):
+    def __init__(self, model_name, mode='train'):
         self.indir = f'../CoverSongDetection_Timothy/Encodec/dataset/{model_name}'
         if mode=='train':
           self.filepath = 'data/coversIndian_train_val.txt'

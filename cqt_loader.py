@@ -38,5 +38,6 @@ class IndianCoverCQT(Dataset):
             data = data[:target_length,:,:]
         elif current_length < target_length:
             pad_time = target_length - current_length
-            data = np.pad(data, (0, pad_time), mode='constant', constant_values=0)
+            pad_zeros = np.zeros((pad_time, data.shape[1], data.shape[2]))
+            data = np.concatenate((data, pad_zeros))
         return data

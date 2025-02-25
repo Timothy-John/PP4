@@ -29,7 +29,7 @@ class IndianCoverCQT(Dataset):
         set_id = filename.split('_')[0]  # Assuming the set_id is the first part before '_'
         in_path = os.path.join(self.indir, filename + '.npy')
         data = np.load(in_path)
-        data = self.pad_or_truncate(data, 400)
+        data = self.pad_or_truncate(data, 256)
         return data, int(set_id)
 
     def pad_or_truncate(self, data, target_length):

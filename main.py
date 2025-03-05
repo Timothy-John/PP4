@@ -49,7 +49,7 @@ def transfer_learning(**kwargs):
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, NNmodel.parameters()), lr=1e-4)
     
     # Training loop
-    opt.max_epoch = 100
+    opt.max_epoch = 50
     best_val_map = 0
     best_model_path = None
     

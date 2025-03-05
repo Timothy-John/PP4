@@ -11,10 +11,9 @@ class CQTNet(BasicModule):
         super().__init__()
         self.fc0 = nn.Linear(768, 500)
         self.fc1 = nn.Linear(500, 300)
-        self.fc1 = nn.Linear(300, 300)
+        self.fc2 = nn.Linear(300, 300)
 
     def forward(self, x):
-        # input [N, C, H, W] (W = 396)
         N = x.size()[0]
         x = x.view(N, -1)
         x = self.fc0(x)

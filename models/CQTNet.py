@@ -9,8 +9,8 @@ from .basic_module import BasicModule
 class CQTNet(BasicModule):
     def __init__(self):
         super().__init__()
-        self.fc0 = nn.Linear(512, 400)
-        self.fc1 = nn.Linear(400, 300)
+        self.fc0 = nn.Linear(768, 500)
+        self.fc1 = nn.Linear(500, 300)
         self.fc1 = nn.Linear(300, 300)
 
     def forward(self, x):

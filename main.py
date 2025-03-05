@@ -66,7 +66,7 @@ def transfer_learning(**kwargs):
             with torch.no_grad():
                 MERTembeddings = MERTmodel(**inputs, output_hidden_states=False)
             optimizer.zero_grad()
-            scores, _ = NNmodel(MERTembeddings)
+            scores, _ = NNmodel(MERTembeddings.last_hidden_state.mean(-2))
             
             loss = criterion(scores, labels)
             loss.backward()
@@ -103,10 +103,10 @@ def val_slow(NNmodel, MERTmodel, MERTprocessor, dataloader, epoch, dataset_name=
 
         inputs = inputs.to(opt.device)
         with torch.no_grad():
-          MERTembeddings = MERTmodel(**inputs, output_hidden_states=True)
-          _, embeddings = NNmodel(MERTembeddings)
+          MERTembeddings = MERTmodel(**inputs, output_hidden_states=False)
+          _, embeddings = NNmodel(MERTembeddings.last_hidden_state.mean(-2))
         
-        all_embeddings.append(np.expand_dims(embeddings.cpu().numpy(), axis=0))
+        all_embeddings.append(embeddings.cpu().numpy())
         all_labels.append(label)
     
     embeddings = np.concatenate(all_embeddings)

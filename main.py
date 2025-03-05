@@ -39,7 +39,6 @@ def transfer_learning(**kwargs):
     MERTprocessor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
 
     NNmodel = getattr(models, 'CQTNet')()
-    NNmodel.fc1 = nn.Linear(300, 300).to(opt.device)
     NNmodel = NNmodel.to(opt.device)
 
     for name, param in NNmodel.named_parameters():

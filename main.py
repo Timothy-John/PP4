@@ -63,7 +63,7 @@ def transfer_learning(**kwargs):
     
     # Define loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(list(MERT_model.parameters()) + list(filter(lambda p: p.requires_grad, CQTNet_model.parameters())), lr=1e-4)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, CQTNet_model.parameters()), lr=1e-4)
 
     # Training loop
     opt.max_epoch = 50

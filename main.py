@@ -14,9 +14,6 @@ from transformers import Wav2Vec2FeatureExtractor
 from transformers import AutoModel
 import librosa
 
-from torch.amp import autocast, GradScaler
-scaler = GradScaler()
-
 
 def custom_collate_MERT(batch):
     data = [item[0] for item in batch]
@@ -62,33 +59,22 @@ def transfer_learning(**kwargs):
     CQTNet_model = CQTNet_model.to(opt.device)
 
     for name, param in CQTNet_model.named_parameters():
-       if 'conv0' in name:
-           param.requires_grad = False
-       else:
-           param.requires_grad = True
-    
-    for name, param in MERT_model.named_parameters():
-       if '0' in name or '1' in name:
-           param.requires_grad = False
-       else:
-           param.requires_grad = True
+        param.requires_grad = True
     
     # Define loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(list(MERT_model.parameters()) + list(filter(lambda p: p.requires_grad, CQTNet_model.parameters())), lr=1e-4)
 
     # Training loop
-    opt.max_epoch = 100
+    opt.max_epoch = 50
     best_val_map = 0
     best_CQTNet_path = None
-    best_MERT_path = None
     
     optimizer.zero_grad()
     for epoch in range(opt.max_epoch):
         CQTNet_model.train()
-        MERT_model.train()
+        MERT_model.eval()
         total_loss = 0
-        iters_to_accumulate = 10
         
         for i, ((MERT_data, MERT_labels), (CQTNet_data, CQTNet_labels)) in enumerate(tqdm(zip(train_MERT_loader,train_CQTNet_loader), desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
             assert MERT_labels == CQTNet_labels
@@ -96,27 +82,18 @@ def transfer_learning(**kwargs):
             # make sure the sample_rate aligned
             MERT_inputs = MERT_processor(MERT_data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
             
-            with autocast('cuda'):
+            with torch.no_grad():
                 outputs = MERT_model(**MERT_inputs, output_hidden_states=False)
-                #all_layer_hidden_states = torch.stack(outputs.hidden_states).squeeze()
-                #time_reduced_hidden_states = all_layer_hidden_states.mean(-2)
-                #embeddings = time_reduced_hidden_states[11]  #Taking Embeddings from 12th Layer
-                embeddings = outputs.last_hidden_state.squeeze().mean(-2)
+            embeddings = outputs.last_hidden_state.squeeze().mean(-2)
             
             data = torch.cat([CQTNet_data.to(opt.device), embeddings.unsqueeze(0).unsqueeze(0).unsqueeze(0)],axis=2).to(opt.device)
             labels = torch.LongTensor(CQTNet_labels).to(opt.device)
-            
-            with autocast('cuda'):
-                scores, _ = CQTNet_model(data)
-                loss = criterion(scores, labels)
-                loss = loss / iters_to_accumulate
-            scaler.scale(loss).backward()
+
+            optimizer.zero_grad()
+            scores, _ = CQTNet_model(data)
+            loss = criterion(scores, labels)
+            optimizer.step()
             total_loss += loss.item()
-            
-            if (i + 1) % iters_to_accumulate == 0:
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad()
 
         avg_loss = total_loss / len(train_CQTNet_loader)
         print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
@@ -129,9 +106,7 @@ def transfer_learning(**kwargs):
             best_val_map = val_map
             best_CQTNet_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(CQTNet_model.state_dict(), best_CQTNet_path)
-            best_MERT_path = f"check_points/MERT_transfer_learning_epoch_{epoch+1}.pth"
-            torch.save(MERT_model.state_dict(), best_MERT_path)
-            print(f"New best model saved to {best_CQTNet_path} and {best_MERT_path}")
+            print(f"New best model saved to {best_CQTNet_path}")
     
     # Load best model and evaluate on test set
     CQTNet_model.load_state_dict(torch.load(best_CQTNet_path))

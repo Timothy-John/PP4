@@ -48,8 +48,8 @@ def transfer_learning(**kwargs):
     test_MERT_loader = DataLoader(test_MERT_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_MERT)
 
     # Load pre-trained model
-    MERT_model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
-    MERT_processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
+    MERT_model = AutoModel.from_pretrained("m-a-p/MERT-v1-330M", trust_remote_code=True, device_map=opt.device)
+    MERT_processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-330M",trust_remote_code=True, device_map=opt.device)
 
     opt.model = 'CQTNet'
     opt.load_model_path = '../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'

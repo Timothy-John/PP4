@@ -57,9 +57,9 @@ def transfer_learning(**kwargs):
     CQTNet_model.load(opt.load_model_path)
     CQTNet_model = CQTNet_model.to(opt.device)
 
-    MERT_FF = getattr(models, 'MERT_FF')()
+    MERT_FF = getattr(models, 'MERT_FF')().to(opt.device)
 
-    Final_FF = getattr(models, 'Final_FF')()
+    Final_FF = getattr(models, 'Final_FF')().to(opt.device)
 
     for name, param in CQTNet_model.named_parameters():
         param.requires_grad = True
@@ -99,7 +99,7 @@ def transfer_learning(**kwargs):
             optimizer.zero_grad()
             MERT_FF_out = MERT_FF(embeddings)
             feat = CQTNet_model(CQTNet_data)
-            score,_ = Final_FF(feat,MERT_FF_out)
+            scores,_ = Final_FF(feat,MERT_FF_out)
             loss = criterion(scores, labels)
             optimizer.step()
             total_loss += loss.item()

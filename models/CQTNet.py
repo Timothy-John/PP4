@@ -43,13 +43,11 @@ class CQTNet(BasicModule):
         self.fc0 = nn.Linear(512, 300)
         self.fc1 = nn.Linear(300, 10000)
 
-    def forward(self, x, MERT_FF_out):
+    def forward(self, x):
         # input [N, C, H, W] (W = 396)
         N = x.size()[0]
         x = self.features(x)  # [N, 512, 57, 2~15]
         x = self.pool(x)
         x = x.view(N, -1)
-        x = torch.cat([x,MERT_FF_out])
         feature = self.fc0(x)
-        x = self.fc1(feature)
-        return x, feature
+        return feature

@@ -43,7 +43,7 @@ class IndianCover(Dataset):
                 lambda x: x.unsqueeze(0),  # Add channel dimension
             ])
             data = transform_test(data)
-            data = self.pad_or_truncate(data, 1024, 84) #1024 is the embedding size of MERT 330M
+            data = self.pad_or_truncate(data, 400, 84)
         else:
             in_path = self.indir +filename[:-int(len(filename.split('_')[-1])+1)] +'/' +filename +'.mp3'
             data, sr = librosa.load(in_path, sr=24000)

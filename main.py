@@ -97,8 +97,8 @@ def transfer_learning(**kwargs):
             labels = torch.LongTensor(CQTNet_labels).to(opt.device)
 
             optimizer.zero_grad()
-            MERT_FF_out = MERT_FF(embeddings)
-            feat = CQTNet_model(CQTNet_data)
+            MERT_FF_out = MERT_FF(embeddings.to(opt.device))
+            feat = CQTNet_model(CQTNet_data.to(opt.device))
             scores,_ = Final_FF(feat,MERT_FF_out)
             loss = criterion(scores, labels)
             optimizer.step()
@@ -140,9 +140,9 @@ def val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, Final_FF, CQTNet
         with torch.no_grad():
             outputs = MERT_model(**MERT_inputs, output_hidden_states=False)
             embeddings = outputs.last_hidden_state.squeeze().mean(-2)
-            MERT_FF_out = MERT_FF(embeddings)
-            feat = CQTNet_model(CQTNet_data)
-            _,embedding = Final_FF(feat,MERT_FF_out)
+            MERT_FF_out = MERT_FF(embeddings.to(opt.device))
+            feat = CQTNet_model(CQTNet_data.to(opt.device))
+            _,embedding = Final_FF(feat.to(opt.device), MERT_FF_out.to(opt.device))
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(int(CQTNet_label))
     

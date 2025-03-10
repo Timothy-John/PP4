@@ -40,7 +40,7 @@ class CQTNet(BasicModule):
             ('norm9', nn.BatchNorm2d(512)), ('relu9', nn.ReLU(inplace=True)),
         ]))
         self.pool = nn.AdaptiveMaxPool2d((1, 1))
-        self.fc0 = nn.Linear(612, 300)
+        self.fc0 = nn.Linear(512, 300)
         self.fc1 = nn.Linear(300, 10000)
 
     def forward(self, x, MERT_FF_out):

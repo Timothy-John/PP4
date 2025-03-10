@@ -53,12 +53,16 @@ def transfer_learning(**kwargs):
 
     opt.model = 'CQTNet'
     opt.load_model_path = '../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
-    CQTNet_model = getattr(models, opt.model)()
+    CQTNet_model = getattr(models, 'CQTNet')()
     CQTNet_model.load(opt.load_model_path)
     CQTNet_model.fc1 = nn.Linear(300, 300)
     CQTNet_model = CQTNet_model.to(opt.device)
 
+    MERT_FF = getattr(models, 'MERT_FF')()
+
     for name, param in CQTNet_model.named_parameters():
+        param.requires_grad = True
+    for name, param in MERT_FF.named_parameters():
         param.requires_grad = True
     
     # Define loss function and optimizer
@@ -85,12 +89,13 @@ def transfer_learning(**kwargs):
             with torch.no_grad():
                 outputs = MERT_model(**MERT_inputs, output_hidden_states=False)
             embeddings = outputs.last_hidden_state.squeeze().mean(-2)
+
+            MERT_FF_out = MERT_FF(embeddings)
             
-            data = torch.cat([CQTNet_data.to(opt.device), embeddings.unsqueeze(0).unsqueeze(0).unsqueeze(0)],axis=2).to(opt.device)
             labels = torch.LongTensor(CQTNet_labels).to(opt.device)
 
             optimizer.zero_grad()
-            scores, _ = CQTNet_model(data)
+            scores, _ = CQTNet_model(CQTNet_data, MERT_FF_out)
             loss = criterion(scores, labels)
             optimizer.step()
             total_loss += loss.item()
@@ -99,7 +104,7 @@ def transfer_learning(**kwargs):
         print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
 
         # Evaluate on validation set
-        val_map, val_top10, val_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, val_CQTNet_loader, val_MERT_loader, epoch, "Indian Validation Set")
+        val_map, val_top10, val_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, val_CQTNet_loader, val_MERT_loader, epoch, "Indian Validation Set")
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
 
         if val_map > best_val_map:
@@ -111,11 +116,11 @@ def transfer_learning(**kwargs):
     # Load best model and evaluate on test set
     CQTNet_model.load_state_dict(torch.load(best_CQTNet_path))
     MERT_model.load_state_dict(torch.load(best_MERT_path))
-    test_map, test_top10, test_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, val_CQTNet_loader, val_MERT_loader, -1, "Indian Test Set")
+    test_map, test_top10, test_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, val_CQTNet_loader, val_MERT_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 @torch.no_grad()
-def val_slow(CQTNet_model, MERT_model, MERT_processor, CQTNet_loader, MERT_loader, epoch, dataset_name=None):
+def val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, CQTNet_loader, MERT_loader, epoch, dataset_name=None):
     CQTNet_model.eval()
     MERT_model.eval()
     all_embeddings = []
@@ -130,10 +135,10 @@ def val_slow(CQTNet_model, MERT_model, MERT_processor, CQTNet_loader, MERT_loade
           outputs = MERT_model(**MERT_inputs, output_hidden_states=False)
           embeddings = outputs.last_hidden_state.squeeze().mean(-2)
 
-        data = torch.cat([CQTNet_data.to(opt.device), embeddings.unsqueeze(0).unsqueeze(0).unsqueeze(0)],axis=2).to(opt.device)
+        MERT_FF_out = MERT_FF(embeddings)
         
         with torch.no_grad():
-            _, embedding = CQTNet_model(data)
+            _, embedding = CQTNet_model(data, MERT_FF_out)
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(int(CQTNet_label))
     

@@ -117,7 +117,7 @@ def transfer_learning(**kwargs):
     CQTNet_model.load_state_dict(torch.load(best_CQTNet_path))
     MERT_FF.load_state_dict(torch.load(best_MERT_FF_path))
     Final_FF.load_state_dict(torch.load(best_Final_FF_path))
-    test_map, test_top10, test_rank1 = val_slow(CQTNet_model, MERT_FF, Final_FF, val_CQTNet_loader, val_MERT_loader, -1, "Indian Test Set")
+    test_map, test_top10, test_rank1 = val_slow(CQTNet_model, MERT_FF, Final_FF, test_CQTNet_loader, test_MERT_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 @torch.no_grad()

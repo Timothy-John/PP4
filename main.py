@@ -47,10 +47,6 @@ def transfer_learning(**kwargs):
     test_CQTNet_loader = DataLoader(test_CQTNet_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_CQTNet)
     test_MERT_loader = DataLoader(test_MERT_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate_MERT)
 
-    # Load pre-trained model
-    MERT_model = AutoModel.from_pretrained("m-a-p/MERT-v1-330M", trust_remote_code=True, device_map=opt.device)
-    MERT_processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-330M",trust_remote_code=True, device_map=opt.device)
-
     opt.model = 'CQTNet'
     opt.load_model_path = '../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
     CQTNet_model = getattr(models, 'CQTNet')()
@@ -90,16 +86,10 @@ def transfer_learning(**kwargs):
         for i, ((MERT_data, MERT_labels), (CQTNet_data, CQTNet_labels)) in enumerate(tqdm(zip(train_MERT_loader,train_CQTNet_loader), desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
             assert MERT_labels == CQTNet_labels
             
-            # make sure the sample_rate aligned
-            MERT_inputs = MERT_processor(MERT_data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
-            
-            with torch.no_grad():
-                outputs = MERT_model(**MERT_inputs, output_hidden_states=False)
-            embeddings = outputs.last_hidden_state.squeeze().mean(-2)
             labels = torch.LongTensor(CQTNet_labels).to(opt.device)
 
             optimizer.zero_grad()
-            MERT_FF_out = MERT_FF(embeddings.to(opt.device))
+            MERT_FF_out = MERT_FF(MERT_data.to(opt.device))
             feat = CQTNet_model(CQTNet_data.to(opt.device))
             scores,_ = Final_FF(feat,MERT_FF_out)
             loss = criterion(scores, labels)
@@ -110,7 +100,7 @@ def transfer_learning(**kwargs):
         print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
 
         # Evaluate on validation set
-        val_map, val_top10, val_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, Final_FF, val_CQTNet_loader, val_MERT_loader, epoch, "Indian Validation Set")
+        val_map, val_top10, val_rank1 = val_slow(CQTNet_model, MERT_FF, Final_FF, val_CQTNet_loader, val_MERT_loader, epoch, "Indian Validation Set")
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
 
         if val_map > best_val_map:
@@ -127,11 +117,11 @@ def transfer_learning(**kwargs):
     CQTNet_model.load_state_dict(torch.load(best_CQTNet_path))
     MERT_FF.load_state_dict(torch.load(best_MERT_FF_path))
     Final_FF.load_state_dict(torch.load(best_Final_FF_path))
-    test_map, test_top10, test_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, Final_FF, val_CQTNet_loader, val_MERT_loader, -1, "Indian Test Set")
+    test_map, test_top10, test_rank1 = val_slow(CQTNet_model, MERT_FF, Final_FF, val_CQTNet_loader, val_MERT_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 @torch.no_grad()
-def val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, Final_FF, CQTNet_loader, MERT_loader, epoch, dataset_name=None):
+def val_slow(CQTNet_model, MERT_FF, Final_FF, CQTNet_loader, MERT_loader, epoch, dataset_name=None):
     CQTNet_model.eval()
     MERT_model.eval()
     MERT_FF.eval()
@@ -141,13 +131,9 @@ def val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, Final_FF, CQTNet
     
     for (MERT_data, MERT_label), (CQTNet_data, CQTNet_label) in tqdm(zip(MERT_loader, CQTNet_loader), desc=f"Evaluating {dataset_name}"):
         assert MERT_label == CQTNet_label
-        MERT_inputs = MERT_processor(MERT_data, sampling_rate=24000, return_tensors="pt")
         
-        MERT_inputs = MERT_inputs.to(opt.device)
         with torch.no_grad():
-            outputs = MERT_model(**MERT_inputs, output_hidden_states=False)
-            embeddings = outputs.last_hidden_state.squeeze().mean(-2)
-            MERT_FF_out = MERT_FF(embeddings.to(opt.device))
+            MERT_FF_out = MERT_FF(MERT_data.to(opt.device))
             feat = CQTNet_model(CQTNet_data.to(opt.device))
             _,embedding = Final_FF(feat.to(opt.device), MERT_FF_out.to(opt.device))
         all_embeddings.append(embedding.cpu().numpy())

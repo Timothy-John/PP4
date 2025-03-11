@@ -76,6 +76,8 @@ def transfer_learning(**kwargs):
     opt.max_epoch = 50
     best_val_map = 0
     best_CQTNet_path = None
+    best_MERT_FF_path = None
+    best_Final_FF_path = None
     
     optimizer.zero_grad()
     for epoch in range(opt.max_epoch):
@@ -114,12 +116,17 @@ def transfer_learning(**kwargs):
         if val_map > best_val_map:
             best_val_map = val_map
             best_CQTNet_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
+            best_MERT_FF_path = f"check_points/MERT_FF_transfer_learning_epoch_{epoch+1}.pth"
+            best_Final_FF_path = f"check_points/Final_FF_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(CQTNet_model.state_dict(), best_CQTNet_path)
-            print(f"New best model saved to {best_CQTNet_path}")
+            torch.save(MERT_FF.state_dict(), best_MERT_FF_path)
+            torch.save(Final_FF.state_dict(), best_Final_FF_path)
+            print(f"New best model saved to: {best_CQTNet_path}, {best_MERT_FF_path}, {best_Final_FF_path}")
     
     # Load best model and evaluate on test set
     CQTNet_model.load_state_dict(torch.load(best_CQTNet_path))
-    MERT_model.load_state_dict(torch.load(best_MERT_path))
+    MERT_FF.load_state_dict(torch.load(best_MERT_FF_path))
+    Final_FF.load_state_dict(torch.load(best_Final_FF_path))
     test_map, test_top10, test_rank1 = val_slow(CQTNet_model, MERT_model, MERT_processor, MERT_FF, Final_FF, val_CQTNet_loader, val_MERT_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 

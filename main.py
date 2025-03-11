@@ -16,10 +16,10 @@ import librosa
 
 
 def custom_collate_MERT(batch):
-    data = [item[0] for item in batch]
+    data = [item[0][0] for item in batch]
     labels = [item[1] for item in batch]
     labels = torch.LongTensor(labels)
-    return data, labels
+    return torch.Tensor(np.asarray(data)), labels
 def custom_collate_CQTNet(batch):
     data = [item[0] for item in batch]
     labels = [item[1] for item in batch]

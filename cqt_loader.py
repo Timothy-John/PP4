@@ -12,7 +12,12 @@ class IndianCover(Dataset):
     def __init__(self, mode='train', model='CQTNet', out_length=None):
         self.model = model
         if self.model=='MERT':
-            self.indir = '../CoverSongDetection_Timothy/CoverIndian_audio/'
+            if mode=='train':
+                self.indir = '../CoverSongDetection_Timothy/MERT_train_embeddings.npy'
+            elif mode=='val':
+                self.indir = '../CoverSongDetection_Timothy/MERT_train_embeddings.npy'
+            else:
+                self.indir = '../CoverSongDetection_Timothy/MERT_test_embeddings.npy'
         else:
             self.indir = '../CoverSongDetection_Timothy/IndianCover_cqt_npy'
         
@@ -45,8 +50,7 @@ class IndianCover(Dataset):
             data = transform_test(data)
             data = self.pad_or_truncate(data, 400, 84)
         else:
-            in_path = self.indir +filename[:-int(len(filename.split('_')[-1])+1)] +'/' +filename +'.mp3'
-            data, sr = librosa.load(in_path, sr=24000)
+            data = np.load(self.indir)[index]
         return data, int(set_id)
 
     # Including necessary methods from the CQT class

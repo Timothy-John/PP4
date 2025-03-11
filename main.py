@@ -78,7 +78,6 @@ def transfer_learning(**kwargs):
     optimizer.zero_grad()
     for epoch in range(opt.max_epoch):
         CQTNet_model.train()
-        MERT_model.eval()
         MERT_FF.train()
         Final_FF.train()
         total_loss = 0
@@ -123,7 +122,6 @@ def transfer_learning(**kwargs):
 @torch.no_grad()
 def val_slow(CQTNet_model, MERT_FF, Final_FF, CQTNet_loader, MERT_loader, epoch, dataset_name=None):
     CQTNet_model.eval()
-    MERT_model.eval()
     MERT_FF.eval()
     Final_FF.eval()
     all_embeddings = []

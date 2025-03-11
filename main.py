@@ -92,6 +92,7 @@ def transfer_learning(**kwargs):
             feat = CQTNet_model(CQTNet_data.to(opt.device))
             scores,_ = Final_FF(feat,MERT_FF_out)
             loss = criterion(scores, labels)
+            loss.backward()
             optimizer.step()
             total_loss += loss.item()
 

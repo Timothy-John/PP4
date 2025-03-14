@@ -112,10 +112,13 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     model.eval()
     data = IndianCoverCQT('train')
     loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
-    for input, label in loader:
-        embedding, _ = model(inputs)
-        all_embeddings.append(embedding[0])
-        all_labels.append(label[0])
+    for inp, label in loader:
+        with torch.no_grad():
+            embedding, _ = model(inp.to(opt.device))
+        all_embeddings.append(embedding[0].cpu())
+        all_labels.append(label[0].item())
+    all_embeddings = torch.stack(all_embeddings).to(opt.device)
+    all_labels = torch.Tensor(all_labels).to(opt.device)
 
     for name, param in model.named_parameters():
         if 'conv0' in name:

@@ -16,9 +16,9 @@ import librosa
 
 
 def custom_collate(batch):
-    data = [item[0] for item in batch]
+    data = [item[0][0] for item in batch]
     labels = [item[1] for item in batch]
-    return torch.Tensor(data).to(opt.device), torch.LongTensor(labels).to(opt.device)
+    return torch.Tensor(np.asarray(data)), torch.LongTensor(np.asarray(labels))
 
 def transfer_learning(**kwargs):
     opt._parse(kwargs)
@@ -59,7 +59,7 @@ def transfer_learning(**kwargs):
         NNmodel.train()
         total_loss = 0
         
-        for i, (MERTembeddings, labels) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
+        for MERTembeddings, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}"):
             # make sure the sample_rate aligned
             #inputs = MERTprocessor(data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
             #labels = torch.LongTensor(labels).to(opt.device)
@@ -67,9 +67,9 @@ def transfer_learning(**kwargs):
             #with torch.no_grad():
             #    MERTembeddings = MERTmodel(**inputs, output_hidden_states=False)
             optimizer.zero_grad()
-            scores, _ = NNmodel(MERTembeddings)
+            scores, _ = NNmodel(MERTembeddings.to(opt.device))
             
-            loss = criterion(scores, labels)
+            loss = criterion(scores, labels.to(opt.device))
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
@@ -105,7 +105,7 @@ def val_slow(NNmodel, dataloader, epoch, dataset_name=None):
         #inputs = inputs.to(opt.device)
         with torch.no_grad():
         #  MERTembeddings = MERTmodel(**inputs, output_hidden_states=False)
-          _, embeddings = NNmodel(MERTembeddings)
+          _, embeddings = NNmodel(data.to(opt.device))
         
         all_embeddings.append(embeddings.cpu().numpy())
         all_labels.append(label)

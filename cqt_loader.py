@@ -12,13 +12,13 @@ class IndianCover(Dataset):
     def __init__(self, mode='train', out_length=None):
         if mode=='train':
           self.filepath = 'data/coversIndian_train_val.txt'
-          self.indir = '../CoverSongDetection_Timothy/MERT_train_embeddings.npy'
+          self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
         elif mode=='val':
           self.filepath = 'data/coversIndian_train_val.txt'
-          self.indir = '../CoverSongDetection_Timothy/MERT_train_embeddings.npy'
+          self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
         else:
           self.filepath = 'data/coversIndian_test.txt'
-          self.indir = '../CoverSongDetection_Timothy/MERT_test_embeddings.npy'
+          self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/330M_MERT_test_embeddings.npy'
         
         with open(self.filepath, 'r') as fp:
             self.file_list = [line.rstrip() for line in fp]

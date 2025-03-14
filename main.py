@@ -18,7 +18,7 @@ import librosa
 def custom_collate(batch):
     data = [item[0] for item in batch]
     labels = [item[1] for item in batch]
-    return data, labels
+    return torch.Tensor(data).to(opt.device), torch.LongTensor(labels).to(opt.device)
 
 def transfer_learning(**kwargs):
     opt._parse(kwargs)
@@ -35,8 +35,9 @@ def transfer_learning(**kwargs):
     val_loader = DataLoader(val_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
 
-    MERTmodel = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
-    MERTprocessor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
+    #MERT Embeddings already loaded in GDrive
+    #MERTmodel = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
+    #MERTprocessor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
 
     NNmodel = getattr(models, 'CQTNet')()
     NNmodel = NNmodel.to(opt.device)
@@ -54,19 +55,19 @@ def transfer_learning(**kwargs):
     best_model_path = None
     
     for epoch in range(opt.max_epoch):
-        MERTmodel.eval()
+        #MERTmodel.eval()
         NNmodel.train()
         total_loss = 0
         
-        for i, (data, labels) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
+        for i, (MERTembeddings, labels) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{opt.max_epoch}")):
             # make sure the sample_rate aligned
-            inputs = MERTprocessor(data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
-            labels = torch.LongTensor(labels).to(opt.device)
+            #inputs = MERTprocessor(data, sampling_rate=24000, return_tensors="pt", padding=True).to(opt.device)
+            #labels = torch.LongTensor(labels).to(opt.device)
 
-            with torch.no_grad():
-                MERTembeddings = MERTmodel(**inputs, output_hidden_states=False)
+            #with torch.no_grad():
+            #    MERTembeddings = MERTmodel(**inputs, output_hidden_states=False)
             optimizer.zero_grad()
-            scores, _ = NNmodel(MERTembeddings.last_hidden_state.mean(-2))
+            scores, _ = NNmodel(MERTembeddings)
             
             loss = criterion(scores, labels)
             loss.backward()
@@ -77,7 +78,7 @@ def transfer_learning(**kwargs):
         print(f"Epoch {epoch+1}/{opt.max_epoch}, Loss: {avg_loss:.4f}")
 
         # Evaluate on validation set
-        val_map, val_top10, val_rank1 = val_slow(NNmodel, MERTmodel, MERTprocessor, val_loader, epoch, "Indian Validation Set")
+        val_map, val_top10, val_rank1 = val_slow(NNmodel, val_loader, epoch, "Indian Validation Set")
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
 
         if val_map > best_val_map:
@@ -88,23 +89,23 @@ def transfer_learning(**kwargs):
     
     # Load best model and evaluate on test set
     NNmodel.load_state_dict(torch.load(best_model_path))
-    test_map, test_top10, test_rank1 = val_slow(NNmodel, MERTmodel, MERTprocessor, test_loader, -1, "Indian Test Set")
+    test_map, test_top10, test_rank1 = val_slow(NNmodel, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 @torch.no_grad()
-def val_slow(NNmodel, MERTmodel, MERTprocessor, dataloader, epoch, dataset_name=None):
-    MERTmodel.eval()
+def val_slow(NNmodel, dataloader, epoch, dataset_name=None):
+    #MERTmodel.eval()
     NNmodel.eval()
     all_embeddings = []
     all_labels = []
     
     for data, label in tqdm(dataloader, desc=f"Evaluating {dataset_name}"):
-        inputs = MERTprocessor(data, sampling_rate=24000, return_tensors="pt")
+        #inputs = MERTprocessor(data, sampling_rate=24000, return_tensors="pt")
 
-        inputs = inputs.to(opt.device)
+        #inputs = inputs.to(opt.device)
         with torch.no_grad():
-          MERTembeddings = MERTmodel(**inputs, output_hidden_states=False)
-          _, embeddings = NNmodel(MERTembeddings.last_hidden_state.mean(-2))
+        #  MERTembeddings = MERTmodel(**inputs, output_hidden_states=False)
+          _, embeddings = NNmodel(MERTembeddings)
         
         all_embeddings.append(embeddings.cpu().numpy())
         all_labels.append(label)

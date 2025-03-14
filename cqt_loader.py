@@ -13,11 +13,11 @@ class IndianCover(Dataset):
         self.model = model
         if self.model=='MERT':
             if mode=='train':
-                self.indir = '../CoverSongDetection_Timothy/MERT_train_embeddings.npy'
+                self.indir = '../CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
             elif mode=='val':
-                self.indir = '../CoverSongDetection_Timothy/MERT_train_embeddings.npy'
+                self.indir = '../CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
             else:
-                self.indir = '../CoverSongDetection_Timothy/MERT_test_embeddings.npy'
+                self.indir = '../CoverSongDetection_Timothy/330M_MERT_test_embeddings.npy'
         else:
             self.indir = '../CoverSongDetection_Timothy/IndianCover_cqt_npy'
         

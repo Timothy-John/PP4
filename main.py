@@ -22,7 +22,7 @@ def custom_collate(batch):
 
 def transfer_learning(**kwargs):
     opt._parse(kwargs)
-    opt.batch_size = 1
+    opt.batch_size = 32
     opt.num_workers = 2
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {opt.device}")
@@ -50,7 +50,7 @@ def transfer_learning(**kwargs):
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, NNmodel.parameters()), lr=1e-4)
     
     # Training loop
-    opt.max_epoch = 50
+    opt.max_epoch = 200
     best_val_map = 0
     best_model_path = None
     

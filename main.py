@@ -17,7 +17,7 @@ def custom_collate(batch):
     labels = torch.LongTensor(labels)
     return data, labels
 
-def transfer_learning(**kwargs, fine_tune=False):
+def transfer_learning(**kwargs):
     opt.batch_size = 32
     opt.num_workers = 2
     opt.model = 'CQTNet'
@@ -98,7 +98,7 @@ def transfer_learning(**kwargs, fine_tune=False):
     test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
     
-    if fine_tune==True:
+    if kwargs.get("fine_tune")==True:
         print("\n\nFine Tuning Model with Triplet Loss....")
         fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
     return best_model_path

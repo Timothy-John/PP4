@@ -8,7 +8,6 @@ from utility import *
 from tqdm import tqdm
 import numpy as np
 from cqt_loader import IndianCoverCQT
-import random
 
 def custom_collate(batch):
     data = [item[0] for item in batch]
@@ -166,9 +165,6 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     model.load_state_dict(torch.load(best_model_path))
     test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set", True)
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
-
-import torch
-import random
 
 def create_triplets(embeddings, labels, all_embeddings, all_labels):
     """

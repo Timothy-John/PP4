@@ -21,7 +21,7 @@ def transfer_learning(**kwargs):
     opt.batch_size = 32
     opt.num_workers = 2
     opt.model = 'CQTNet'
-    opt.load_model_path = '/content/drive/MyDrive/CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
+    opt.load_model_path = '../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
     # opt.load_model_path = '/content/CQTNet/check_points/latest.pth'
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     opt._parse(kwargs)
@@ -107,6 +107,9 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     best_val_map = 0
     best_model_path = None
 
+    #Convert to Embedding Layer
+    model.fc1 = nn.Linear(300, 300).to(opt.device)
+    
     for name, param in model.named_parameters():
         if 'conv0' in name:
             param.requires_grad = False
@@ -125,14 +128,14 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
             loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
             for inp, label in loader:
                 with torch.no_grad():
-                    _, embedding = model(inp.to(opt.device))
+                    embedding, _ = model(inp.to(opt.device))
                 all_embeddings.append(embedding[0].cpu())
                 all_labels.append(label[0].item())
             all_embeddings = torch.stack(all_embeddings).to(opt.device)
             all_labels = torch.Tensor(all_labels).to(opt.device)
     
             optimizer.zero_grad()
-            _, embeddings = model(inputs)
+            embeddings, _ = model(inputs)
     
             # Create triplets
             anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels)
@@ -149,7 +152,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
     
         # Evaluate on validation set
-        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set")
+        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set", True)
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
     
         if val_map > best_val_map:
@@ -161,7 +164,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     
     # Load best model and evaluate on test set
     model.load_state_dict(torch.load(best_model_path))
-    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
+    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set", True)
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 import torch
@@ -219,14 +222,17 @@ def create_triplets(embeddings, labels, all_embeddings, all_labels):
 
 
 @torch.no_grad()
-def val_slow(model, dataloader, epoch, dataset_name=None):
+def val_slow(model, dataloader, epoch, dataset_name=None, fine_tune_val=False):
     model.eval()
     all_embeddings = []
     all_labels = []
 
     for data, label in tqdm(dataloader, desc=f"Evaluating {dataset_name}"):
         input = data.to(opt.device)
-        _, embedding = model(input)
+        if fine_tune_val==True:
+            embedding, _ = model(input)
+        else:
+            _, embedding = model(input)
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
 

@@ -135,17 +135,18 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     
             optimizer.zero_grad()
             embeddings, _ = model(inputs)
-    
-            # Create triplets
-            anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels)
-    
-            if anchor.size(0) > 0:  # Check if we have valid triplets
-                loss = criterion(anchor, positive, negative)
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-            else:
-                print("No valid triplets in this batch. Skipping.")
+
+            for m in ['easy','hard']:
+                # Create triplets
+                anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels, m)
+        
+                if anchor.size(0) > 0:  # Check if we have valid triplets
+                    loss = criterion(anchor, positive, negative)
+                    loss.backward()
+                    optimizer.step()
+                    total_loss += loss.item()
+                else:
+                    print("No valid triplets in this batch. Skipping.")
         
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
@@ -166,7 +167,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set", True)
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
-def create_triplets(embeddings, labels, all_embeddings, all_labels):
+def create_triplets(embeddings, labels, all_embeddings, all_labels, m):
     """
     Create triplets for triplet loss.
     For each anchor, select:
@@ -197,14 +198,20 @@ def create_triplets(embeddings, labels, all_embeddings, all_labels):
             # Using Euclidean distance (you may also consider squared distances).
             pos_dists = torch.norm(anchor - pos_candidates, dim=1)
             # Hard positive: the one with the maximum distance.
-            hard_pos_idx = torch.argmax(pos_dists).item()
-            positive = all_embeddings[pos_indices[hard_pos_idx]].unsqueeze(0)
+            if m=='hard':
+                pos_idx = torch.argmax(pos_dists).item()
+            else:
+                pos_idx = torch.argmin(pos_dists).item()
+            positive = all_embeddings[pos_indices[pos_idx]].unsqueeze(0)
             
             # Compute distances between the anchor and all negative candidates.
             neg_dists = torch.norm(anchor - neg_candidates, dim=1)
             # Hard negative: the one with the minimum distance.
-            hard_neg_idx = torch.argmin(neg_dists).item()
-            negative = all_embeddings[neg_indices[hard_neg_idx]].unsqueeze(0)
+            if m=='hard':
+                neg_idx = torch.argmin(neg_dists).item()
+            else:
+                neg_idx = torch.argmax(neg_dists).item()
+            negative = all_embeddings[neg_indices[neg_idx]].unsqueeze(0)
             
             triplets.append((anchor, positive, negative))
     

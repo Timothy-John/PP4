@@ -101,7 +101,6 @@ def transfer_learning(**kwargs):
     if kwargs.get("fine_tune")==True:
         print("\n\nFine Tuning Model with Triplet Loss....")
         fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
-    return best_model_path
 
 def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt):
     num_epochs = 200

@@ -151,7 +151,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
     
         # Evaluate on validation set
-        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set", True) #False gives better MAP
+        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set", False) #False gives better MAP
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
     
         if val_map > best_val_map:
@@ -163,7 +163,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     
     # Load best model and evaluate on test set
     model.load_state_dict(torch.load(best_model_path))
-    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set", True)
+    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set", False)
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 def create_triplets(embeddings, labels, all_embeddings, all_labels, m):

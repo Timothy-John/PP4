@@ -102,7 +102,7 @@ def transfer_learning(**kwargs):
         fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
 
 def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt):
-    num_epochs = 100
+    num_epochs = 20
     best_val_map = 0
     best_model_path = None
 
@@ -132,11 +132,10 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
                 all_labels.append(label[0].item())
             all_embeddings = torch.stack(all_embeddings).to(opt.device)
             all_labels = torch.Tensor(all_labels).to(opt.device)
-    
-            optimizer.zero_grad()
-            embeddings, _ = model(inputs)
-
             for m in ['easy','hard']:
+                optimizer.zero_grad()
+                embeddings, _ = model(inputs)
+
                 # Create triplets
                 anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels, m)
         
@@ -152,7 +151,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
     
         # Evaluate on validation set
-        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set", True)
+        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set", True) #False gives better MAP
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
     
         if val_map > best_val_map:

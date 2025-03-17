@@ -119,26 +119,16 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     data = IndianCoverCQT('train')
     train_loader = DataLoader(data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
     mode = ['easy','hard']
-    ind=0
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
         for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
             inputs, labels = inputs.to(opt.device), labels.to(opt.device)
-            all_embeddings, all_labels = [], []
-            loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
-            for inp, label in loader:
-                with torch.no_grad():
-                    _, embedding = model(inp.to(opt.device))
-                all_embeddings.append(embedding[0].cpu())
-                all_labels.append(label[0].item())
-            all_embeddings = torch.stack(all_embeddings).to(opt.device)
-            all_labels = torch.Tensor(all_labels).to(opt.device)
             loss = 0
             for m in mode:
                 _, embeddings = model(inputs)
                 # Create triplets
-                anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind)
+                anchor, positive, negative = create_triplets(embeddings, labels, m)
                 if anchor.size(0) > 0:  # Check if we have valid triplets
                     loss += criterion(anchor, positive, negative)/float(len(mode))
                     total_loss += loss.item()
@@ -168,7 +158,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set", False)
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
-def create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind):
+def create_triplets(embeddings, labels, m):
     """
     Create triplets for triplet loss.
     For each anchor, select:
@@ -178,8 +168,8 @@ def create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind):
     triplets = []
     for i in range(len(embeddings)):
         anchor = embeddings[i].unsqueeze(0)
-        pos_indices = (all_labels == labels[i]).nonzero().squeeze()
-        neg_indices = (all_labels != labels[i]).nonzero().squeeze()
+        pos_indices = (labels == labels[i]).nonzero().squeeze()
+        neg_indices = (labels != labels[i]).nonzero().squeeze()
         
         # Ensure indices are at least 1D tensors
         if pos_indices.dim() == 0:
@@ -192,8 +182,8 @@ def create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind):
         
         if len(pos_indices) > 0 and len(neg_indices) > 0:
             # Get candidate embeddings from the full dataset.
-            pos_candidates = all_embeddings[pos_indices]
-            neg_candidates = all_embeddings[neg_indices]
+            pos_candidates = embeddings[pos_indices]
+            neg_candidates = embeddings[neg_indices]
             
             # Compute distances between the anchor and all positive candidates.
             # Using Euclidean distance (you may also consider squared distances).
@@ -203,7 +193,7 @@ def create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind):
                 pos_idx = torch.argmax(pos_dists).item()
             else:
                 pos_idx = torch.argmin(pos_dists).item()
-            positive = all_embeddings[pos_indices[pos_idx]].unsqueeze(0)
+            positive = embeddings[pos_indices[pos_idx]].unsqueeze(0)
             
             # Compute distances between the anchor and all negative candidates.
             neg_dists = torch.norm(anchor - neg_candidates, dim=1)
@@ -212,7 +202,7 @@ def create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind):
                 neg_idx = torch.argmin(neg_dists).item()
             else:
                 neg_idx = torch.argmax(neg_dists).item()
-            negative = all_embeddings[neg_indices[neg_idx]].unsqueeze(0)
+            negative = embeddings[neg_indices[neg_idx]].unsqueeze(0)
             
             triplets.append((anchor, positive, negative))
     

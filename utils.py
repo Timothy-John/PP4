@@ -103,6 +103,7 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
         test_file_list = [line.rstrip() for line in fp]
     # Perform training
     for epoch in range(epochs):
+        classification_model.train()
         # Iterate over train set
         for inputs, labels in tqdm(train_loader):
             optimizer.zero_grad()

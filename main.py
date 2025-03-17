@@ -140,7 +140,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
                 # Create triplets
                 anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind)
                 if anchor.size(0) > 0:  # Check if we have valid triplets
-                    loss += criterion(anchor, positive, negative)/2.0
+                    loss += criterion(anchor, positive, negative)/float(len(mode))
                     total_loss += loss.item()
                 else:
                     print("No valid triplets in this batch. Skipping.")

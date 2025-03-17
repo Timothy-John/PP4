@@ -9,6 +9,7 @@ from loaders import get_loader_model
 
 from cqt_loader import IndianCoverCQT
 from cqtnet_utility import *
+from tqdm import tqdm
 
 
 WINDOW_SECONDS = 2
@@ -108,7 +109,7 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
     # Perform training
     for epoch in range(epochs):
         # Iterate over train set
-        for inputs, labels in train_loader:
+        for inputs, labels in tqdm(train_loader):
             optimizer.zero_grad()
             outputs = classification_model(inputs.to("cuda:0")).cpu()
             loss = criterion(outputs, labels)

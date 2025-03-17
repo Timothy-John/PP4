@@ -86,7 +86,7 @@ def check_step(loader, classification_model, epoch):
     dis2d = -np.matmul(embeddings, embeddings.T)
     return calc_MAP(dis2d, labels)
 
-def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=1):
+def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=32):
     criterion = criterion()
     optimizer = optimizer(classification_model.parameters(), lr=lr)
     train_data = IndianCoverCQT(model_name, 'train')

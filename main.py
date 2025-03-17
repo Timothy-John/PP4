@@ -178,7 +178,7 @@ def create_triplets(embeddings, labels, m):
             neg_indices = neg_indices.unsqueeze(0)
         
         # Exclude the anchor itself from the positive indices.
-        pos_indices = pos_indices[pos_indices != int(ind+i)]
+        pos_indices = pos_indices[pos_indices != i]
         
         if len(pos_indices) > 0 and len(neg_indices) > 0:
             # Get candidate embeddings from the full dataset.

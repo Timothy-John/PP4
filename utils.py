@@ -27,9 +27,11 @@ def shuffle(a, b):
     return zip(*c)
 
 def custom_collate(batch):
-    data = batch[0][0]
-    labels = [batch[0][1]] * data.shape[0]
-    return torch.Tensor(data), torch.LongTensor(labels)
+    data = [item[0] for item in batch]
+    labels = [item[1] for item in batch]
+    data = torch.stack(data)
+    labels = torch.LongTensor(labels)
+    return data, labels
 
 
 def load_dataset(model_name, win_seconds=WINDOW_SECONDS, step_seconds=STEP_SECONDS):
@@ -53,22 +55,19 @@ def load_dataset(model_name, win_seconds=WINDOW_SECONDS, step_seconds=STEP_SECON
                 np.save(dataset_base_folder+"/"+filename+".npy", X)
 
 
-def get_MNIST_train_model(classes, dataset_name, model_name, channels=128, feature_len=128, kernel_size=5, max_pool_size=5):
+def get_MNIST_train_model(classes, dataset_name, model_name, channels=256, feature_len=128, kernel_size=5, max_pool_size=5):
     model = torch.nn.Sequential(
-        torch.nn.Conv1d(channels, feature_len, kernel_size),
+        torch.nn.Conv2d(channels, feature_len, kernel_size),
         torch.nn.ReLU(),
-        torch.nn.MaxPool1d(max_pool_size),
-        torch.nn.Conv1d(feature_len, feature_len*2, kernel_size),
+        torch.nn.MaxPool2d(max_pool_size),
+        torch.nn.Conv2d(feature_len, feature_len*2, kernel_size),
         torch.nn.ReLU(),
-        torch.nn.MaxPool1d(max_pool_size),
+        torch.nn.MaxPool2d(max_pool_size),
         torch.nn.Dropout(),
         torch.nn.Flatten(),
         torch.nn.LazyLinear(300),
         torch.nn.LazyLinear(classes)
     )
-    #model.load_state_dict(torch.load(f'../CoverSongDetection_Timothy/Encodec/Encodec_pretrained/classify_{dataset_name}_{model_name}_model.pth', weights_only=True))
-    #model[9] = torch.nn.LazyLinear(300)
-    #print(model)
     return model.to("cuda:0")
     
 

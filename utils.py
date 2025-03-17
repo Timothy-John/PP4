@@ -66,8 +66,8 @@ def get_MNIST_train_model(classes, dataset_name, model_name, channels=128, featu
         torch.nn.LazyLinear(300),
         torch.nn.LazyLinear(classes)
     )
-    model.load_state_dict(torch.load(f'../CoverSongDetection_Timothy/Encodec/Encodec_pretrained/classify_{dataset_name}_{model_name}_model.pth', weights_only=True))
-    model[9] = torch.nn.LazyLinear(300)
+    #model.load_state_dict(torch.load(f'../CoverSongDetection_Timothy/Encodec/Encodec_pretrained/classify_{dataset_name}_{model_name}_model.pth', weights_only=True))
+    #model[9] = torch.nn.LazyLinear(300)
     #print(model)
     return model.to("cuda:0")
     
@@ -86,7 +86,6 @@ def check_step(loader, classification_model, epoch):
     dis2d = -np.matmul(embeddings, embeddings.T)
     return calc_MAP(dis2d, labels)
 
-#only for batch_size=1 (1 data is treated as 256 sub-batches)
 def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=1):
     criterion = criterion()
     optimizer = optimizer(classification_model.parameters(), lr=lr)
@@ -143,7 +142,7 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
 def perform_training(dataset_name, model_name, results_folder="results"):
     classes = DATASET2CLASSES[dataset_name]
     load_dataset(model_name)
-    model = get_MNIST_train_model(len(classes), dataset_name, model_name)
+    model = get_MNIST_train_model(300, dataset_name, model_name)
     train_loss, best_val_map, best_val_top10, best_val_rank1, test_map, test_top10, test_rank1, best_model = train_loop(model, model_name)
     torch.save(best_model, f"Transfer_Learning_classify_{dataset_name}_{model_name}_model.pth")
     if not os.path.exists(results_folder):

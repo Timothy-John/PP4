@@ -9,7 +9,6 @@ from loaders import get_loader_model
 
 from cqt_loader import IndianCoverCQT
 from cqtnet_utility import *
-from tqdm import tqdm
 from torch import nn
 import models
 
@@ -71,7 +70,7 @@ def check_step(loader, classification_model, epoch):
     classification_model.eval()
     all_embeddings = []
     all_labels = []
-    for inputs, label in tqdm(loader):
+    for inputs, label in loader:
         embedding,_ = classification_model(inputs.to("cuda"))
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
@@ -81,7 +80,7 @@ def check_step(loader, classification_model, epoch):
     dis2d = -np.matmul(embeddings, embeddings.T)
     return calc_MAP(dis2d, labels)
 
-def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=20, batch_size=32):
+def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=100, batch_size=32):
     criterion = criterion()
     optimizer = optimizer(classification_model.parameters(), lr=lr)
     train_data = IndianCoverCQT(model_name, 'train')
@@ -105,7 +104,7 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
     for epoch in range(epochs):
         classification_model.train()
         # Iterate over train set
-        for inputs, labels in tqdm(train_loader):
+        for inputs, labels in train_loader:
             optimizer.zero_grad()
             outputs,_ = classification_model(inputs.to("cuda"))
             loss = criterion(outputs, labels)
@@ -137,11 +136,11 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
 
 def perform_training(dataset_name, model_name, results_folder="results"):
     load_dataset(model_name)
-    #model = get_MNIST_train_model(300, dataset_name, model_name)
-    model = getattr(models, 'CQTNet')()
-    model.load('../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth')
-    model.features.conv0 = nn.Conv2d(256, 32, kernel_size=(12, 3), dilation=(1, 1), padding=(6, 0), bias=False)
-    model.fc1 = nn.Linear(300, 300)
+    model = get_MNIST_train_model(300, dataset_name, model_name)
+    #model = getattr(models, 'CQTNet')()
+    #model.load('../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth')
+    #model.features.conv0 = nn.Conv2d(256, 32, kernel_size=(12, 3), dilation=(1, 1), padding=(6, 0), bias=False)
+    #model.fc1 = nn.Linear(300, 300)
     model = model.to("cuda")
     
     train_loss, best_val_map, best_val_top10, best_val_rank1, test_map, test_top10, test_rank1, best_model = train_loop(model, model_name)

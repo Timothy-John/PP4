@@ -129,14 +129,14 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
             loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
             for inp, label in loader:
                 with torch.no_grad():
-                    embedding, _ = model(inp.to(opt.device))
+                    _, embedding = model(inp.to(opt.device))
                 all_embeddings.append(embedding[0].cpu())
                 all_labels.append(label[0].item())
             all_embeddings = torch.stack(all_embeddings).to(opt.device)
             all_labels = torch.Tensor(all_labels).to(opt.device)
             loss = 0
             for m in mode:
-                embeddings, _ = model(inputs)
+                _, embeddings = model(inputs)
                 # Create triplets
                 anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind)
                 if anchor.size(0) > 0:  # Check if we have valid triplets

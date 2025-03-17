@@ -107,7 +107,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     best_model_path = None
 
     #Convert to Embedding Layer
-    model.fc1 = nn.Linear(300, 300).to(opt.device)
+    #model.fc1 = nn.Linear(300, 300).to(opt.device)
     
     for name, param in model.named_parameters():
         if 'conv0' in name:
@@ -115,15 +115,17 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
         else:
             param.requires_grad = True
 
-    criterion = nn.TripletMarginLoss(margin=0.3)
-    
+    criterion = nn.TripletMarginLoss(margin=0.05)
+    data = IndianCoverCQT('train')
+    train_loader = DataLoader(data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
+    mode = ['easy','hard']
+    ind=0
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
         for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
             inputs, labels = inputs.to(opt.device), labels.to(opt.device)
             all_embeddings, all_labels = [], []
-            data = IndianCoverCQT('train')
             loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
             for inp, label in loader:
                 with torch.no_grad():
@@ -132,20 +134,20 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
                 all_labels.append(label[0].item())
             all_embeddings = torch.stack(all_embeddings).to(opt.device)
             all_labels = torch.Tensor(all_labels).to(opt.device)
-            for m in ['easy','hard']:
-                optimizer.zero_grad()
+            loss = 0
+            for m in mode:
                 embeddings, _ = model(inputs)
-
                 # Create triplets
-                anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels, m)
-        
+                anchor, positive, negative = create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind)
                 if anchor.size(0) > 0:  # Check if we have valid triplets
-                    loss = criterion(anchor, positive, negative)
-                    loss.backward()
-                    optimizer.step()
+                    loss += criterion(anchor, positive, negative)/2.0
                     total_loss += loss.item()
                 else:
                     print("No valid triplets in this batch. Skipping.")
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            ind+=opt.batch_size
         
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
@@ -166,7 +168,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set", False)
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
-def create_triplets(embeddings, labels, all_embeddings, all_labels, m):
+def create_triplets(embeddings, labels, all_embeddings, all_labels, m, ind):
     """
     Create triplets for triplet loss.
     For each anchor, select:
@@ -186,7 +188,7 @@ def create_triplets(embeddings, labels, all_embeddings, all_labels, m):
             neg_indices = neg_indices.unsqueeze(0)
         
         # Exclude the anchor itself from the positive indices.
-        pos_indices = pos_indices[pos_indices != i]
+        pos_indices = pos_indices[pos_indices != int(ind+i)]
         
         if len(pos_indices) > 0 and len(neg_indices) > 0:
             # Get candidate embeddings from the full dataset.

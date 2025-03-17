@@ -10,7 +10,7 @@ class CQTNet(BasicModule):
     def __init__(self):
         super().__init__()
         self.features = nn.Sequential(OrderedDict([
-            ('conv0', nn.Conv2d(256, 32, kernel_size=(12, 3), dilation=(1, 1), padding=(6, 0), bias=False)),
+            ('conv0', nn.Conv2d(1, 32, kernel_size=(12, 3), dilation=(1, 1), padding=(6, 0), bias=False)),
             ('norm0', nn.BatchNorm2d(32)), ('relu0', nn.ReLU(inplace=True)),
             ('conv1', nn.Conv2d(32, 64, kernel_size=(13, 3), dilation=(1, 2), bias=False)),
             ('norm1', nn.BatchNorm2d(64)), ('relu1', nn.ReLU(inplace=True)),

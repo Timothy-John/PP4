@@ -71,7 +71,7 @@ def check_step(loader, classification_model, epoch):
     all_embeddings = []
     all_labels = []
     for inputs, label in loader:
-        embedding,_ = classification_model(inputs.to("cuda"))
+        embedding = classification_model[:9](inputs.to("cuda"))
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
     embeddings = np.concatenate(all_embeddings)
@@ -106,7 +106,7 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
         # Iterate over train set
         for inputs, labels in train_loader:
             optimizer.zero_grad()
-            outputs,_ = classification_model(inputs.to("cuda"))
+            outputs = classification_model(inputs.to("cuda"))
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()

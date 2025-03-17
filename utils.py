@@ -27,7 +27,7 @@ def custom_collate(batch):
     labels = [item[1] for item in batch]
     data = torch.Tensor(data)
     labels = torch.LongTensor(labels)
-    return data, labels
+    return data.to("cuda"), labels.to("cuda")
 
 
 def load_dataset(model_name, win_seconds=WINDOW_SECONDS, step_seconds=STEP_SECONDS):
@@ -64,7 +64,7 @@ def get_MNIST_train_model(classes, dataset_name, model_name, channels=256, featu
         torch.nn.LazyLinear(300),
         torch.nn.LazyLinear(classes)
     )
-    return model.to("cuda:0")
+    return model.to("cuda")
     
 
 def check_step(loader, classification_model, epoch):
@@ -72,7 +72,7 @@ def check_step(loader, classification_model, epoch):
     all_embeddings = []
     all_labels = []
     for inputs, label in loader:
-        embedding = classification_model[:9](inputs.to("cuda:0")).cpu()
+        embedding = classification_model[:9](inputs.to("cuda"))
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
     embeddings = np.concatenate(all_embeddings)
@@ -106,7 +106,7 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
         # Iterate over train set
         for inputs, labels in train_loader:
             optimizer.zero_grad()
-            outputs = classification_model(inputs.to("cuda:0")).cpu()
+            outputs = classification_model(inputs.to("cuda"))
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()

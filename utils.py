@@ -30,7 +30,7 @@ def shuffle(a, b):
 def custom_collate(batch):
     data = [item[0] for item in batch]
     labels = [item[1] for item in batch]
-    data = torch.stack(data)
+    data = torch.Tensor(data)
     labels = torch.LongTensor(labels)
     return data, labels
 

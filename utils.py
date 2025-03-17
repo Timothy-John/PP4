@@ -25,8 +25,8 @@ def shuffle(a, b):
 def custom_collate(batch):
     data = [item[0] for item in batch]
     labels = [item[1] for item in batch]
-    data = torch.Tensor(data)
-    labels = torch.LongTensor(labels)
+    data = torch.Tensor(np.array(data))
+    labels = torch.LongTensor(np.array(labels))
     return data.to("cuda"), labels.to("cuda")
 
 
@@ -72,7 +72,7 @@ def check_step(loader, classification_model, epoch):
     all_embeddings = []
     all_labels = []
     for inputs, label in loader:
-        embedding,_ = classification_model[:9](inputs.to("cuda"))
+        embedding,_ = classification_model(inputs.to("cuda"))
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
     embeddings = np.concatenate(all_embeddings)

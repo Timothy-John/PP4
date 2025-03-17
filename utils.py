@@ -10,17 +10,12 @@ from loaders import get_loader_model
 from cqt_loader import IndianCoverCQT
 from cqtnet_utility import *
 from tqdm import tqdm
+from torch import nn
+import models
 
 
 WINDOW_SECONDS = 2
 STEP_SECONDS = 1
-
-DATASET2CLASSES = {
-    "env": ['airplane', 'breathing', 'brushing_teeth', 'can_opening', 'car_horn', 'cat', 'chainsaw', 'chirping_birds', 'church_bells', 'clapping', 'clock_alarm', 'clock_tick', 'coughing', 'cow', 'crackling_fire', 'crickets', 'crow', 'crying_baby', 'dog', 'door_wood_creaks', 'door_wood_knock', 'drinking_sipping', 'engine', 'fireworks', 'footsteps', 'frog', 'glass_breaking', 'hand_saw', 'helicopter', 'hen', 'insects', 'keyboard_typing', 'laughing', 'mouse_click', 'pig', 'pouring_water', 'rain', 'rooster', 'sea_waves', 'sheep', 'siren', 'sneezing', 'snoring', 'thunderstorm', 'toilet_flush', 'train', 'vacuum_cleaner', 'washing_machine', 'water_drops', 'wind'],
-    "genres": ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"],
-    "speech_music": ["speech", "music"],
-}
-
 
 def shuffle(a, b):
     c = list(zip(a, b))
@@ -86,7 +81,7 @@ def check_step(loader, classification_model, epoch):
     dis2d = -np.matmul(embeddings, embeddings.T)
     return calc_MAP(dis2d, labels)
 
-def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=1000, batch_size=32):
+def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0.01, criterion=torch.nn.CrossEntropyLoss, epochs=20, batch_size=32):
     criterion = criterion()
     optimizer = optimizer(classification_model.parameters(), lr=lr)
     train_data = IndianCoverCQT(model_name, 'train')
@@ -107,9 +102,9 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
     with open(test_filepath, 'r') as fp:
         test_file_list = [line.rstrip() for line in fp]
     # Perform training
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
         # Iterate over train set
-        for inputs, labels in tqdm(train_loader):
+        for inputs, labels in train_loader:
             optimizer.zero_grad()
             outputs = classification_model(inputs.to("cuda:0")).cpu()
             loss = criterion(outputs, labels)
@@ -140,9 +135,13 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
 
 
 def perform_training(dataset_name, model_name, results_folder="results"):
-    classes = DATASET2CLASSES[dataset_name]
     load_dataset(model_name)
-    model = get_MNIST_train_model(300, dataset_name, model_name)
+    #model = get_MNIST_train_model(300, dataset_name, model_name)
+    model = getattr(models, 'CQTNet')()
+    model.load('../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth')
+    model.fc1 = nn.Linear(300, 300)
+    model = model.to("cuda")
+    
     train_loss, best_val_map, best_val_top10, best_val_rank1, test_map, test_top10, test_rank1, best_model = train_loop(model, model_name)
     torch.save(best_model, f"Transfer_Learning_classify_{dataset_name}_{model_name}_model.pth")
     if not os.path.exists(results_folder):

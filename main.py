@@ -137,7 +137,6 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            ind+=opt.batch_size
         
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")

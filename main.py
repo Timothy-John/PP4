@@ -102,7 +102,7 @@ def transfer_learning(**kwargs):
         fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
 
 def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt):
-    num_epochs = 20
+    num_epochs = 50
     best_val_map = 0
     best_model_path = None
 

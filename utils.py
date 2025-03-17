@@ -139,6 +139,7 @@ def perform_training(dataset_name, model_name, results_folder="results"):
     #model = get_MNIST_train_model(300, dataset_name, model_name)
     model = getattr(models, 'CQTNet')()
     model.load('../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth')
+    model.features.conv0 = nn.Conv2d(256, 32, kernel_size=(12, 3), dilation=(1, 1), padding=(6, 0), bias=False)
     model.fc1 = nn.Linear(300, 300)
     model = model.to("cuda")
     

@@ -71,7 +71,7 @@ def check_step(loader, classification_model, epoch):
     classification_model.eval()
     all_embeddings = []
     all_labels = []
-    for inputs, label in loader:
+    for inputs, label in tqdm(loader):
         embedding,_ = classification_model(inputs.to("cuda"))
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
@@ -102,9 +102,9 @@ def train_loop(classification_model, model_name, optimizer=torch.optim.SGD, lr=0
     with open(test_filepath, 'r') as fp:
         test_file_list = [line.rstrip() for line in fp]
     # Perform training
-    for epoch in tqdm(range(epochs)):
+    for epoch in range(epochs):
         # Iterate over train set
-        for inputs, labels in train_loader:
+        for inputs, labels in tqdm(train_loader):
             optimizer.zero_grad()
             outputs,_ = classification_model(inputs.to("cuda"))
             loss = criterion(outputs, labels)

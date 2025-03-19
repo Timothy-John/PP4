@@ -8,6 +8,11 @@ from utility import *
 from tqdm import tqdm
 import numpy as np
 from cqt_loader import IndianCoverCQT
+import random
+
+torch.manual_seed(0)
+np.random.seed(0)
+random.seed(0)
 
 def custom_collate(batch):
     data = [item[0] for item in batch]

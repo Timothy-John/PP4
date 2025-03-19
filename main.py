@@ -118,31 +118,28 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     criterion = nn.TripletMarginLoss(margin=0.05)
     data = IndianCoverCQT('train')
     train_loader = DataLoader(data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
-    mode = ['easy','hard']
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
         for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
             inputs, labels = inputs.to(opt.device), labels.to(opt.device)
-            loss = 0
-            for m in mode:
-                _, embeddings = model(inputs)
-                # Create triplets
-                anchor, positive, negative = create_triplets(embeddings, labels, m)
-                if anchor.size(0) > 0:  # Check if we have valid triplets
-                    loss += criterion(anchor, positive, negative)/float(len(mode))
-                    total_loss += loss.item()
-                else:
-                    print("No valid triplets in this batch. Skipping.")
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            _, embeddings = model(inputs)
+            # Create triplets
+            anchor, positive, negative = create_triplets(embeddings, labels)
+            if anchor.size(0) > 0:  # Check if we have valid triplets
+                loss = criterion(anchor, positive, negative)
+                total_loss += loss.item()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+            else:
+                print("No valid triplets in this batch. Skipping.")
         
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
     
         # Evaluate on validation set
-        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set", False) #False gives better MAP
+        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set")
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
     
         if val_map > best_val_map:
@@ -150,14 +147,13 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
             best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(model.state_dict(), best_model_path)
             print(f"New best model saved to {best_model_path}")
-            model.load_state_dict(torch.load(best_model_path)) #Loading the best model for next epoch
     
     # Load best model and evaluate on test set
     model.load_state_dict(torch.load(best_model_path))
-    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set", False)
+    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
-def create_triplets(embeddings, labels, m):
+def create_triplets(embeddings, labels):
     """
     Create triplets for triplet loss.
     For each anchor, select:
@@ -188,19 +184,13 @@ def create_triplets(embeddings, labels, m):
             # Using Euclidean distance (you may also consider squared distances).
             pos_dists = torch.norm(anchor - pos_candidates, dim=1)
             # Hard positive: the one with the maximum distance.
-            if m=='hard':
-                pos_idx = torch.argmax(pos_dists).item()
-            else:
-                pos_idx = torch.argmin(pos_dists).item()
+            pos_idx = torch.argmax(pos_dists).item()
             positive = embeddings[pos_indices[pos_idx]].unsqueeze(0)
             
             # Compute distances between the anchor and all negative candidates.
             neg_dists = torch.norm(anchor - neg_candidates, dim=1)
             # Hard negative: the one with the minimum distance.
-            if m=='hard':
-                neg_idx = torch.argmin(neg_dists).item()
-            else:
-                neg_idx = torch.argmax(neg_dists).item()
+            neg_idx = torch.argmin(neg_dists).item()
             negative = embeddings[neg_indices[neg_idx]].unsqueeze(0)
             
             triplets.append((anchor, positive, negative))
@@ -215,17 +205,14 @@ def create_triplets(embeddings, labels, m):
 
 
 @torch.no_grad()
-def val_slow(model, dataloader, epoch, dataset_name=None, fine_tune_val=False):
+def val_slow(model, dataloader, epoch, dataset_name=None):
     model.eval()
     all_embeddings = []
     all_labels = []
 
     for data, label in tqdm(dataloader, desc=f"Evaluating {dataset_name}"):
         input = data.to(opt.device)
-        if fine_tune_val==True:
-            embedding, _ = model(input)
-        else:
-            _, embedding = model(input)
+        _, embedding = model(input)
         all_embeddings.append(embedding.cpu().numpy())
         all_labels.append(label.cpu().numpy())
 

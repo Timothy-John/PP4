@@ -10,13 +10,13 @@ import torch.nn.functional as F
 
 class IndianCoverCQT(Dataset):
     def __init__(self, mode='train', out_length=None):
-        self.indir = '../CoverSongDetection_Timothy/IndianCover_cqt_npy'
+        self.indir = '../CoverSongDetection_Timothy/IndianCover_augmented_cqt_npy'
         if mode=='train':
-          self.filepath = 'data/coversIndian_train_val.txt'
+          self.filepath = 'data/coversIndian_augmented_train_val.txt'
         elif mode=='val':
-          self.filepath = 'data/coversIndian_train_val.txt'
+          self.filepath = 'data/coversIndian_augmented_train_val.txt'
         else:
-          self.filepath = 'data/coversIndian_test.txt'
+          self.filepath = 'data/coversIndian_augmented_test.txt'
         
         with open(self.filepath, 'r') as fp:
             self.file_list = [line.rstrip() for line in fp]

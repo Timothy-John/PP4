@@ -16,7 +16,7 @@ class IndianCoverCQT(Dataset):
         elif mode=='val':
           self.filepath = 'data/coversIndian_augmented_train_val.txt'
         else:
-          self.filepath = 'data/coversIndian_augmented_test.txt'
+          self.filepath = 'data/coversIndian_test.txt'
         
         with open(self.filepath, 'r') as fp:
             self.file_list = [line.rstrip() for line in fp]

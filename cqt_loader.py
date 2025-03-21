@@ -25,6 +25,11 @@ class IndianCoverCQT(Dataset):
                 suffix = stripped.split('_')[-1]
                 if suffix.startswith("Cover") or suffix == "Original":
                     self.file_list.append(stripped)
+        # Uncomment original implementation to add full list:
+        """
+        with open(self.filepath, 'r') as fp:
+            self.file_list = [line.rstrip() for line in fp]
+        """
         self.out_length = out_length
 
     def __len__(self):

@@ -233,9 +233,9 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
             best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(model.state_dict(), best_model_path)
             print(f"New best model saved to {best_model_path}")
-        model.load_state_dict(torch.load(best_model_path))
-        test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
-        print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
+    model.load_state_dict(torch.load(best_model_path))
+    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
+    print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 # Including necessary methods
 def pad_or_truncate(data, target_length, target_freq=84):

@@ -69,6 +69,8 @@ def transfer_learning(**kwargs):
     num_epochs = 200
     best_val_map = 0
     best_model_path = None
+    early_stop = 0
+    early_stop_patience = 15
 
     for epoch in range(num_epochs):
         model.train()
@@ -96,6 +98,10 @@ def transfer_learning(**kwargs):
             best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(model.state_dict(), best_model_path)
             print(f"New best model saved to {best_model_path}")
+        else:
+            early_stop+=1
+            if early_stop == early_stop_patience:
+                break
 
     # Load best model and evaluate on test set
     model.load_state_dict(torch.load(best_model_path))
@@ -110,6 +116,8 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     num_epochs = 50
     best_val_map = 0
     best_model_path = None
+    early_stop = 0
+    early_stop_patience = 15
 
     #Convert to Embedding Layer
     #model.fc1 = nn.Linear(300, 300).to(opt.device)
@@ -152,6 +160,10 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
             best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(model.state_dict(), best_model_path)
             print(f"New best model saved to {best_model_path}")
+        else:
+            early_stop+=1
+            if early_stop == early_stop_patience:
+                break
     
     # Load best model and evaluate on test set
     model.load_state_dict(torch.load(best_model_path))

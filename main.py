@@ -238,7 +238,7 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
         print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
 # Including necessary methods
-def pad_or_truncate(data, target_length, target_freq=84):
+def pad_or_truncate(self, data, target_length, target_freq=84):
     if data.ndim == 2:
         data = data.unsqueeze(0)
     _, freq, current_length = data.shape
@@ -252,6 +252,7 @@ def pad_or_truncate(data, target_length, target_freq=84):
     elif current_length < target_length:
         pad_time = target_length - current_length
         data = F.pad(data, (0, pad_time), mode='constant', value=0)
+    return data
 
 def create_triplets(embeddings, labels):
     """

@@ -2,6 +2,8 @@ import os
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
+from torchvision import transforms
+import torch.nn.functional as F
 import models
 from config import opt
 from utility import *
@@ -111,7 +113,7 @@ def transfer_learning(**kwargs):
     
     if kwargs.get("fine_tune")==True:
         print("\n\nFine Tuning Model with Triplet Loss....")
-        augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, opt)
+        augmented_triplet(model, optimizer, train_data, val_loader, test_loader, opt)
         #fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
 
 def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt):

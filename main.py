@@ -188,7 +188,7 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
     for epoch in range(num_epochs):
         model.train()
         pos = []
-        for f in train_loader.file_list:
+        for f in tqdm(train_loader.file_list):
             set_id = f.split('_')[0]
             in_path = os.path.join(train_loader.indir, f + '.npy')
             data = np.load(in_path)
@@ -209,18 +209,19 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
                 for inp, label in loader:
                     with torch.no_grad():
                         _,embedding = model(inp.to(opt.device))
-                    all_embeddings.append(embedding[0].cpu())
+                    all_embeddings.append(embedding.cpu())
                 all_embeddings = torch.stack(all_embeddings).to(opt.device)
                 for i in range(len(all_embeddings)):
                     neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
                     if neg_dist < best_neg_dist:
                         best_neg_dist = neg_dist
                         negative = all_embeddings[i]
+                loss=0
                 for positive in pos:
-                    loss = criterion(anchor, positive, negative)
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
+                    loss += criterion(anchor, positive, negative)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
                 pos=[]
             else:
                 _,p = model(data)

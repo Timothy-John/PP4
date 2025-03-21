@@ -202,30 +202,29 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
             data = data.unsqueeze(0).to(opt.device)
             if f.split('_')[-1]=="Original":
                 _,anchor = model(data)
+                all_embeddings = []
+                best_neg_dist = np.inf
+                data = IndianCoverCQT('train')
+                loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
+                for inp, label in loader:
+                    with torch.no_grad():
+                        _,embedding = model(inp.to(opt.device))
+                    all_embeddings.append(embedding[0].cpu())
+                all_embeddings = torch.stack(all_embeddings).to(opt.device)
+                for i in range(len(all_embeddings)):
+                    neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
+                    if neg_dist < best_neg_dist:
+                        best_neg_dist = neg_dist
+                        negative = all_embeddings[i]
+                for positive in pos:
+                    loss = criterion(anchor, positive, negative)
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                pos=[]
             else:
                 _,p = model(data)
                 pos.append(p)
-                if f.split('_')[-1][-1] == "5":
-                    all_embeddings = []
-                    best_neg_dist = np.inf
-                    data = IndianCoverCQT('train')
-                    loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
-                    for inp, label in loader:
-                        with torch.no_grad():
-                            _,embedding = model(inp.to(opt.device))
-                        all_embeddings.append(embedding[0].cpu())
-                    all_embeddings = torch.stack(all_embeddings).to(opt.device)
-                    for i in range(len(all_embeddings)):
-                        neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
-                        if neg_dist < best_neg_dist:
-                            best_neg_dist = neg_dist
-                            negative = all_embeddings[i]
-                    for positive in pos:
-                        loss = criterion(anchor, positive, negative)
-                        optimizer.zero_grad()
-                        loss.backward()
-                        optimizer.step()
-                    pos=[]
         val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set")
         print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
         if val_map > best_val_map:

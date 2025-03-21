@@ -98,6 +98,7 @@ def transfer_learning(**kwargs):
             best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(model.state_dict(), best_model_path)
             print(f"New best model saved to {best_model_path}")
+            early_stop = 0
         else:
             early_stop+=1
             if early_stop == early_stop_patience:
@@ -160,6 +161,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
             best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(model.state_dict(), best_model_path)
             print(f"New best model saved to {best_model_path}")
+            early_stop = 0
         else:
             early_stop+=1
             if early_stop == early_stop_patience:

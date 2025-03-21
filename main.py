@@ -57,7 +57,7 @@ def transfer_learning(**kwargs):
     val_data = IndianCoverCQT('val')
     test_data = IndianCoverCQT('test')
 
-    train_loader = DataLoader(train_data, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers, collate_fn=custom_collate)
+    train_loader = DataLoader(train_data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
     val_loader = DataLoader(val_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
 
@@ -111,7 +111,8 @@ def transfer_learning(**kwargs):
     
     if kwargs.get("fine_tune")==True:
         print("\n\nFine Tuning Model with Triplet Loss....")
-        fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
+        augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, opt)
+        #fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
 
 def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt):
     num_epochs = 50
@@ -171,6 +172,84 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     model.load_state_dict(torch.load(best_model_path))
     test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
+
+def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, opt):
+    num_epochs = 50
+    best_val_map = 0
+    best_model_path = None
+    for name, param in model.named_parameters():
+        if 'conv0' in name:
+            param.requires_grad = False
+        else:
+            param.requires_grad = True
+    criterion = nn.TripletMarginLoss(margin=0.05)
+    for epoch in range(num_epochs):
+        model.train()
+        pos = []
+        for f in train_loader.file_list:
+            set_id = f.split('_')[0]
+            in_path = os.path.join(train_loader.indir, f + '.npy')
+            data = np.load(in_path)
+            transform_test = transforms.Compose([
+                lambda x: x.astype(np.float32) / (np.max(np.abs(x)) + 1e-6),
+                lambda x: torch.Tensor(x),
+                lambda x: x.unsqueeze(0),  # Add channel dimension
+            ])
+            data = transform_test(data)
+            data = pad_or_truncate(data, 400, 84)
+            if f.split('_')[-1]=="Original":
+                _,anchor = model(data)
+            else:
+                _,p = model(data)
+                pos.append(p)
+                if f.split('_')[-1][-1] == "5":
+                    all_embeddings = []
+                    best_neg_dist = float.inf
+                    data = IndianCoverCQT('train')
+                    loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
+                    for inp, label in loader:
+                        with torch.no_grad():
+                            _,embedding = model(inp.to(opt.device))
+                        all_embeddings.append(embedding[0].cpu())
+                    all_embeddings = torch.stack(all_embeddings).to(opt.device)
+                    all_labels = torch.Tensor(all_labels).to(opt.device)
+                    for i in range(len(all_embeddings)):
+                        neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
+                        if neg_dist < best_neg_dist:
+                            best_neg_dist = neg_dist
+                            negative = all_embeddings[i]
+                    for positive in pos:
+                        loss = criterion(anchor, positive, negative)
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
+                    pos=[]
+        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set")
+        print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
+        if val_map > best_val_map:
+            best_val_map = val_map
+            best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
+            torch.save(model.state_dict(), best_model_path)
+            print(f"New best model saved to {best_model_path}")
+        model.load_state_dict(torch.load(best_model_path))
+        test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
+        print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
+
+# Including necessary methods
+def pad_or_truncate(data, target_length, target_freq=84):
+    if data.ndim == 2:
+        data = data.unsqueeze(0)
+    _, freq, current_length = data.shape
+    if freq > target_freq:
+        data = data[:, :target_freq, :]
+    elif freq < target_freq:
+        pad_freq = target_freq - freq
+        data = F.pad(data, (0, 0, 0, pad_freq), mode='constant', value=0)
+    if current_length > target_length:
+        data = data[:, :, :target_length]
+    elif current_length < target_length:
+        pad_time = target_length - current_length
+        data = F.pad(data, (0, pad_time), mode='constant', value=0)
 
 def create_triplets(embeddings, labels):
     """

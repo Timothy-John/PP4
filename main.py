@@ -199,6 +199,7 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
             ])
             data = transform_test(data)
             data = pad_or_truncate(data, 400, 84)
+            data = data.unsqueeze(0).to(opt.device)
             if f.split('_')[-1]=="Original":
                 _,anchor = model(data)
             else:
@@ -206,7 +207,7 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
                 pos.append(p)
                 if f.split('_')[-1][-1] == "5":
                     all_embeddings = []
-                    best_neg_dist = float.inf
+                    best_neg_dist = np.inf
                     data = IndianCoverCQT('train')
                     loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
                     for inp, label in loader:
@@ -214,7 +215,6 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
                             _,embedding = model(inp.to(opt.device))
                         all_embeddings.append(embedding[0].cpu())
                     all_embeddings = torch.stack(all_embeddings).to(opt.device)
-                    all_labels = torch.Tensor(all_labels).to(opt.device)
                     for i in range(len(all_embeddings)):
                         neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
                         if neg_dist < best_neg_dist:

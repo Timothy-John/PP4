@@ -190,6 +190,8 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
     num_epochs = 50
     best_val_map = 0
     best_model_path = None
+    early_stop = 0
+    early_stop_patience = 15
     for name, param in model.named_parameters():
         if 'conv0' in name:
             param.requires_grad = False
@@ -199,7 +201,7 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
     for epoch in range(num_epochs):
         model.train()
         pos = []
-        for f in tqdm(train_loader.file_list):
+        for f in tqdm(train_loader.file_list, desc=f"Epoch {epoch+1}/{num_epochs}"):
             set_id = int(f.split('_')[0])
             in_path = os.path.join(train_loader.indir, f + '.npy')
             data = load(in_path)
@@ -247,6 +249,11 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
             best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(model.state_dict(), best_model_path)
             print(f"New best model saved to {best_model_path}")
+            early_stop = 0
+        else:
+            early_stop += 1
+            if early_stop == early_stop_patience:
+                break
     model.load_state_dict(torch.load(best_model_path))
     test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")

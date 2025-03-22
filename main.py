@@ -175,6 +175,17 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
     print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
 
+def load(in_path):
+    data = np.load(in_path)
+    transform_test = transforms.Compose([
+        lambda x: x.astype(np.float32) / (np.max(np.abs(x)) + 1e-6),
+        lambda x: torch.Tensor(x),
+        lambda x: x.unsqueeze(0),  # Add channel dimension
+    ])
+    data = transform_test(data)
+    data = pad_or_truncate(data, 400, 84)
+    return data.unsqueeze(0).to(opt.device)
+
 def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, opt):
     num_epochs = 50
     best_val_map = 0
@@ -191,15 +202,7 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
         for f in tqdm(train_loader.file_list):
             set_id = int(f.split('_')[0])
             in_path = os.path.join(train_loader.indir, f + '.npy')
-            data = np.load(in_path)
-            transform_test = transforms.Compose([
-                lambda x: x.astype(np.float32) / (np.max(np.abs(x)) + 1e-6),
-                lambda x: torch.Tensor(x),
-                lambda x: x.unsqueeze(0),  # Add channel dimension
-            ])
-            data = transform_test(data)
-            data = pad_or_truncate(data, 400, 84)
-            data = data.unsqueeze(0).to(opt.device)
+            data = load(in_path)
             if f.split('_')[-1]=="Original":
                 _,anchor = model(data)
                 all_embeddings = []

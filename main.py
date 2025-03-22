@@ -189,7 +189,7 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
         model.train()
         pos = []
         for f in tqdm(train_loader.file_list):
-            set_id = f.split('_')[0]
+            set_id = int(f.split('_')[0])
             in_path = os.path.join(train_loader.indir, f + '.npy')
             data = np.load(in_path)
             transform_test = transforms.Compose([
@@ -203,6 +203,7 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
             if f.split('_')[-1]=="Original":
                 _,anchor = model(data)
                 all_embeddings = []
+                all_labels = []
                 best_neg_dist = np.inf
                 data = IndianCoverCQT('train')
                 loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
@@ -210,12 +211,21 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
                     with torch.no_grad():
                         _,embedding = model(inp.to(opt.device))
                     all_embeddings.append(embedding.cpu())
+                    all_labels.append(label.cpu())
                 all_embeddings = torch.stack(all_embeddings).to(opt.device)
-                for i in range(len(all_embeddings)):
-                    neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
-                    if neg_dist < best_neg_dist:
-                        best_neg_dist = neg_dist
-                        negative = all_embeddings[i]
+                all_labels = torch.Tensor(all_labels).to(opt.device)
+                t1 = random.randint(0, len(all_embeddings)-50)
+                for i in range(t1, t1+50):
+                    if int(all_labels[i].item()) != set_id:
+                        neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
+                        if neg_dist < best_neg_dist:
+                            best_neg_dist = neg_dist
+                            negative = all_embeddings[i]
+                while True:
+                    t2 = random.randint(0, len(all_embeddings))
+                    if int(all_labels[t2].item()) != set_id:
+                        negative += all_embeddings[t2]
+                        break
                 loss=0
                 for positive in pos:
                     loss += criterion(anchor, positive, negative)

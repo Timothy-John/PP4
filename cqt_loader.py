@@ -17,7 +17,7 @@ class IndianCoverCQT(Dataset):
           self.filepath = 'data/coversIndian_augmented_train_val.txt'
         else:
           self.filepath = 'data/coversIndian_test.txt'
-        
+        #"""
         with open(self.filepath, 'r') as fp:
             self.file_list = []
             for line in fp:

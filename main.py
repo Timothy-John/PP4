@@ -24,7 +24,7 @@ def custom_collate(batch):
     return data, labels
 
 def transfer_learning(**kwargs):
-    opt.batch_size = 32
+    opt.batch_size = 60
     opt.num_workers = 2
     opt.model = 'CQTNet'
     opt.load_model_path = '../CoverSongDetection_Timothy/CQTNet_SpecAugment_x3.pth'
@@ -72,7 +72,7 @@ def transfer_learning(**kwargs):
     best_val_map = 0
     best_model_path = None
     early_stop = 0
-    early_stop_patience = 15
+    early_stop_patience = 25
 
     for epoch in range(num_epochs):
         model.train()
@@ -113,15 +113,15 @@ def transfer_learning(**kwargs):
     
     if kwargs.get("fine_tune")==True:
         print("\n\nFine Tuning Model with Triplet Loss....")
-        augmented_triplet(model, optimizer, train_data, val_loader, test_loader, opt)
-        #fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
+        #augmented_triplet(model, optimizer, train_data, val_loader, test_loader, opt)
+        fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
 
 def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt):
-    num_epochs = 50
+    num_epochs = 150
     best_val_map = 0
     best_model_path = None
     early_stop = 0
-    early_stop_patience = 15
+    early_stop_patience = 25
 
     #Convert to Embedding Layer
     #model.fc1 = nn.Linear(300, 300).to(opt.device)
@@ -307,13 +307,13 @@ def create_triplets(embeddings, labels):
             pos_dists = torch.norm(anchor - pos_candidates, dim=1)
             # Hard positive: the one with the maximum distance.
             pos_idx = torch.argmax(pos_dists).item()
-            positive = embeddings[pos_indices[pos_idx]].unsqueeze(0)
+            positive = embeddings[pos_indices[pos_idx]].unsqueeze(0) + embeddings[pos_indices[random.randint(0,len(pos_indices)-1)]].unsqueeze(0)
             
             # Compute distances between the anchor and all negative candidates.
             neg_dists = torch.norm(anchor - neg_candidates, dim=1)
             # Hard negative: the one with the minimum distance.
             neg_idx = torch.argmin(neg_dists).item()
-            negative = embeddings[neg_indices[neg_idx]].unsqueeze(0)
+            negative = embeddings[neg_indices[neg_idx]].unsqueeze(0) + embeddings[neg_indices[random.randint(0,len(neg_indices)-1)]].unsqueeze(0)
             
             triplets.append((anchor, positive, negative))
     

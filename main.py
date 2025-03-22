@@ -205,24 +205,25 @@ def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, o
                 all_embeddings = []
                 all_labels = []
                 best_neg_dist = np.inf
-                data = IndianCoverCQT('train')
-                loader = DataLoader(data, batch_size=1, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
-                for inp, label in loader:
+                t1 = random.randint(0, len(train_loader.file_list)-50)
+                for i in range(t1, t1+50):
+                    label = int(train_loader.file_list[i].split('_')[0])
+                    in_path = os.path.join(train_loader.indir, train_loader.file_list[i] + '.npy')
+                    inp = load(in_path)
                     with torch.no_grad():
                         _,embedding = model(inp.to(opt.device))
                     all_embeddings.append(embedding.cpu())
-                    all_labels.append(label.cpu())
+                    all_labels.append(label)
                 all_embeddings = torch.stack(all_embeddings).to(opt.device)
-                all_labels = torch.Tensor(all_labels).to(opt.device)
-                t1 = random.randint(0, len(all_embeddings)-50)
-                for i in range(t1, t1+50):
+                all_labels = torch.Tensor(np.array(all_labels)).to(opt.device)
+                for i in range(len(all_labels)):
                     if int(all_labels[i].item()) != set_id:
                         neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
                         if neg_dist < best_neg_dist:
                             best_neg_dist = neg_dist
                             negative = all_embeddings[i]
                 while True:
-                    t2 = random.randint(0, len(all_embeddings))
+                    t2 = random.randint(0, len(all_labels)-1)
                     if int(all_labels[t2].item()) != set_id:
                         negative += all_embeddings[t2]
                         break

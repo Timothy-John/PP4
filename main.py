@@ -133,8 +133,6 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
             param.requires_grad = True
 
     criterion = nn.TripletMarginLoss(margin=0.05)
-    data = IndianCoverCQT('train')
-    train_loader = DataLoader(data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=custom_collate)
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0

@@ -39,7 +39,7 @@ def transfer_learning(**kwargs):
     model = model.to(opt.device)
 
     # Modify the last layer to no:of labels in our dataset
-    model.fc1 = nn.Linear(300, 300).to(opt.device)
+    model.fc1 = nn.Linear(300, 311).to(opt.device)
 
     # Only 1st conv layer frozen
     for name, param in model.named_parameters():

@@ -113,7 +113,6 @@ def transfer_learning(**kwargs):
     
     if kwargs.get("fine_tune")==True:
         print("\n\nFine Tuning Model with Triplet Loss....")
-        #augmented_triplet(model, optimizer, train_data, val_loader, test_loader, opt)
         fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt)
 
 def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt):
@@ -184,78 +183,6 @@ def load(in_path):
     data = pad_or_truncate(data, 400, 84)
     return data.unsqueeze(0).to(opt.device)
 
-def augmented_triplet(model, optimizer, train_loader, val_loader, test_loader, opt):
-    num_epochs = 50
-    best_val_map = 0
-    best_model_path = None
-    early_stop = 0
-    early_stop_patience = 15
-    for name, param in model.named_parameters():
-        if 'conv0' in name:
-            param.requires_grad = False
-        else:
-            param.requires_grad = True
-    criterion = nn.TripletMarginLoss(margin=0.05)
-    for epoch in range(num_epochs):
-        model.train()
-        pos = []
-        for f in tqdm(train_loader.file_list, desc=f"Epoch {epoch+1}/{num_epochs}"):
-            set_id = int(f.split('_')[0])
-            in_path = os.path.join(train_loader.indir, f + '.npy')
-            data = load(in_path)
-            if f.split('_')[-1]=="Original":
-                _,anchor = model(data)
-                all_embeddings = []
-                all_labels = []
-                best_neg_dist = np.inf
-                t1 = random.randint(0, len(train_loader.file_list)-50)
-                for i in range(t1, t1+50):
-                    label = int(train_loader.file_list[i].split('_')[0])
-                    in_path = os.path.join(train_loader.indir, train_loader.file_list[i] + '.npy')
-                    inp = load(in_path)
-                    with torch.no_grad():
-                        _,embedding = model(inp.to(opt.device))
-                    all_embeddings.append(embedding.cpu())
-                    all_labels.append(label)
-                all_embeddings = torch.stack(all_embeddings).to(opt.device)
-                all_labels = torch.Tensor(np.array(all_labels)).to(opt.device)
-                for i in range(len(all_labels)):
-                    if int(all_labels[i].item()) != set_id:
-                        neg_dist = torch.norm(anchor - all_embeddings[i], dim=1)
-                        if neg_dist < best_neg_dist:
-                            best_neg_dist = neg_dist
-                            negative = all_embeddings[i]
-                while True:
-                    t2 = random.randint(0, len(all_labels)-1)
-                    if int(all_labels[t2].item()) != set_id:
-                        negative += all_embeddings[t2]
-                        break
-                loss=0
-                for positive in pos:
-                    loss += criterion(anchor, positive, negative)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                pos=[]
-            else:
-                _,p = model(data)
-                pos.append(p)
-        val_map, val_top10, val_rank1 = val_slow(model, val_loader, epoch, "Indian Validation Set")
-        print(f"Validation - MAP: {val_map:.4f}, Top10: {val_top10:.4f}, Rank1: {val_rank1:.2f}")
-        if val_map > best_val_map:
-            best_val_map = val_map
-            best_model_path = f"check_points/CQTNet_transfer_learning_epoch_{epoch+1}.pth"
-            torch.save(model.state_dict(), best_model_path)
-            print(f"New best model saved to {best_model_path}")
-            early_stop = 0
-        else:
-            early_stop += 1
-            if early_stop == early_stop_patience:
-                break
-    model.load_state_dict(torch.load(best_model_path))
-    test_map, test_top10, test_rank1 = val_slow(model, test_loader, -1, "Indian Test Set")
-    print(f"Final Test Set Performance - MAP: {test_map:.4f}, Top10: {test_top10:.4f}, Rank1: {test_rank1:.2f}")
-
 # Including necessary methods
 def pad_or_truncate(data, target_length, target_freq=84):
     if data.ndim == 2:
@@ -305,13 +232,14 @@ def create_triplets(embeddings, labels):
             pos_dists = torch.norm(anchor - pos_candidates, dim=1)
             # Hard positive: the one with the maximum distance.
             pos_idx = torch.argmax(pos_dists).item()
-            positive = embeddings[pos_indices[pos_idx]].unsqueeze(0) + embeddings[pos_indices[random.randint(0,len(pos_indices)-1)]].unsqueeze(0)
+            positive = embeddings[pos_indices[pos_idx]].unsqueeze(0) + embeddings[pos_indices[random.randint(0,len(pos_indices)-1)]].unsqueeze(0) #(P_max + P_random)
+            #positive = embeddings[pos_indices[4]].unsqueeze(0) #(P_Original)
             
             # Compute distances between the anchor and all negative candidates.
             neg_dists = torch.norm(anchor - neg_candidates, dim=1)
             # Hard negative: the one with the minimum distance.
             neg_idx = torch.argmin(neg_dists).item()
-            negative = embeddings[neg_indices[neg_idx]].unsqueeze(0) + embeddings[neg_indices[random.randint(0,len(neg_indices)-1)]].unsqueeze(0)
+            negative = embeddings[neg_indices[neg_idx]].unsqueeze(0) + embeddings[neg_indices[random.randint(0,len(neg_indices)-1)]].unsqueeze(0) #(N_min + N_random)
             
             triplets.append((anchor, positive, negative))
     

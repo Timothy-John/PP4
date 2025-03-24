@@ -232,7 +232,9 @@ def create_triplets(embeddings, labels):
             pos_dists = torch.norm(anchor - pos_candidates, dim=1)
             # Hard positive: the one with the maximum distance.
             pos_idx = torch.argmax(pos_dists).item()
+            # 3 Implementations:
             positive = embeddings[pos_indices[pos_idx]].unsqueeze(0) + embeddings[pos_indices[random.randint(0,len(pos_indices)-1)]].unsqueeze(0) #(P_max + P_random)
+            #positive = embeddings[pos_indices[4]].unsqueeze(0) + embeddings[pos_indices[pos_idx]].unsqueeze(0) #(P_Original + P_max)
             #positive = embeddings[pos_indices[4]].unsqueeze(0) #(P_Original)
             
             # Compute distances between the anchor and all negative candidates.

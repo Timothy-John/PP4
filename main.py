@@ -209,42 +209,33 @@ def create_triplets(embeddings, labels):
     """
     triplets = []
     for i in range(len(embeddings)):
-        anchor = embeddings[i].unsqueeze(0)
-        pos_indices = (labels == labels[i]).nonzero().squeeze()
-        neg_indices = (labels != labels[i]).nonzero().squeeze()
-        
-        # Ensure indices are at least 1D tensors
-        if pos_indices.dim() == 0:
-            pos_indices = pos_indices.unsqueeze(0)
-        if neg_indices.dim() == 0:
-            neg_indices = neg_indices.unsqueeze(0)
-        
-        # Exclude the anchor itself from the positive indices.
-        pos_indices = pos_indices[pos_indices != i]
-        
-        if len(pos_indices) > 0 and len(neg_indices) > 0 and (i+1)%6 != 0:
-            # Get candidate embeddings from the full dataset.
-            pos_candidates = embeddings[pos_indices]
+        if (i+1)%6 == 0:
+            anchor = embeddings[i].unsqueeze(0)
+            pos_indices = (labels == labels[i]).nonzero().squeeze()
+            neg_indices = (labels != labels[i]).nonzero().squeeze()
+            
+            # Ensure indices are at least 1D tensors
+            if pos_indices.dim() == 0:
+                pos_indices = pos_indices.unsqueeze(0)
+            if neg_indices.dim() == 0:
+                neg_indices = neg_indices.unsqueeze(0)
+            
+            # Exclude the anchor itself from the positive indices.
+            pos_indices = pos_indices[pos_indices != i]
+
             neg_candidates = embeddings[neg_indices]
-            
-            # Compute distances between the anchor and all positive candidates.
-            # Using Euclidean distance (you may also consider squared distances).
-            pos_dists = torch.norm(anchor - pos_candidates, dim=1)
-            # Hard positive: the one with the maximum distance.
-            pos_idx = torch.argmax(pos_dists).item()
-            # 3 Implementations:
-            positive = embeddings[pos_indices[pos_idx]].unsqueeze(0) + embeddings[pos_indices[random.randint(0,len(pos_indices)-1)]].unsqueeze(0) #(P_max + P_random)
-            # IMP: Comment "pos_indices = pos_indices[pos_indices != i]" before using the below two options:
-            #positive = embeddings[pos_indices[5]].unsqueeze(0) + embeddings[pos_indices[pos_idx]].unsqueeze(0) #(P_Original + P_max)
-            #positive = embeddings[pos_indices[5]].unsqueeze(0) + embeddings[pos_indices[5]].unsqueeze(0) #(2*P_Original)
-            
             # Compute distances between the anchor and all negative candidates.
             neg_dists = torch.norm(anchor - neg_candidates, dim=1)
             # Hard negative: the one with the minimum distance.
             neg_idx = torch.argmin(neg_dists).item()
             negative = embeddings[neg_indices[neg_idx]].unsqueeze(0) + embeddings[neg_indices[random.randint(0,len(neg_indices)-1)]].unsqueeze(0) #(N_min + N_random)
-            
-            triplets.append((anchor, positive, negative))
+
+            for pi in range(len(pos_indices)):
+                if len(pos_indices) > 0 and len(neg_indices) > 0:
+                    # Get candidate embeddings from the full dataset.
+                    pos_candidates = embeddings[pos_indices]
+                    positive = embeddings[pos_indices[pi]].unsqueeze(0) + embeddings[pos_indices[pi]].unsqueeze(0) #(2*P)
+                    triplets.append((anchor, positive, negative))
     
     if triplets:
         anchors, positives, negatives = zip(*triplets)

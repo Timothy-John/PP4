@@ -235,7 +235,7 @@ def create_triplets(embeddings, labels):
             # 3 Implementations:
             positive = embeddings[pos_indices[pos_idx]].unsqueeze(0) + embeddings[pos_indices[random.randint(0,len(pos_indices)-1)]].unsqueeze(0) #(P_max + P_random)
             #positive = embeddings[pos_indices[4]].unsqueeze(0) + embeddings[pos_indices[pos_idx]].unsqueeze(0) #(P_Original + P_max)
-            #positive = embeddings[pos_indices[4]].unsqueeze(0) #(P_Original)
+            #positive = 2*embeddings[pos_indices[5]].unsqueeze(0) #(P_Original) #IMP: Comment "pos_indices = pos_indices[pos_indices != i]" before using this
             
             # Compute distances between the anchor and all negative candidates.
             neg_dists = torch.norm(anchor - neg_candidates, dim=1)

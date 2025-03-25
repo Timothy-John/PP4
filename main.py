@@ -222,7 +222,7 @@ def create_triplets(embeddings, labels):
         # Exclude the anchor itself from the positive indices.
         pos_indices = pos_indices[pos_indices != i]
         
-        if len(pos_indices) > 0 and len(neg_indices) > 0:
+        if len(pos_indices) > 0 and len(neg_indices) > 0 and (i+1)%6 != 0:
             # Get candidate embeddings from the full dataset.
             pos_candidates = embeddings[pos_indices]
             neg_candidates = embeddings[neg_indices]
@@ -236,7 +236,7 @@ def create_triplets(embeddings, labels):
             positive = embeddings[pos_indices[pos_idx]].unsqueeze(0) + embeddings[pos_indices[random.randint(0,len(pos_indices)-1)]].unsqueeze(0) #(P_max + P_random)
             # IMP: Comment "pos_indices = pos_indices[pos_indices != i]" before using the below two options:
             #positive = embeddings[pos_indices[5]].unsqueeze(0) + embeddings[pos_indices[pos_idx]].unsqueeze(0) #(P_Original + P_max)
-            #positive = embeddings[pos_indices[5]].unsqueeze(0) + embeddings[pos_indices[5]].unsqueeze(0) #(P_Original)
+            #positive = embeddings[pos_indices[5]].unsqueeze(0) + embeddings[pos_indices[5]].unsqueeze(0) #(2*P_Original)
             
             # Compute distances between the anchor and all negative candidates.
             neg_dists = torch.norm(anchor - neg_candidates, dim=1)

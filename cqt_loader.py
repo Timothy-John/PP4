@@ -11,8 +11,11 @@ import torch.nn.functional as F
 class IndianCoverCQT(Dataset):
     def __init__(self, mode='train', out_length=None):
         self.indir = '../CoverSongDetection_Timothy/IndianCover_cqt_npy'
+        self.mode = mode
         if mode=='train':
           self.filepath = 'data/coversIndian_augmented_train_val.txt'
+          self.set = 0
+          self.set_dict = {}
         elif mode=='val':
           self.filepath = 'data/coversIndian_augmented_train_val.txt'
         else:
@@ -38,6 +41,13 @@ class IndianCoverCQT(Dataset):
     def __getitem__(self, index):
         filename = self.file_list[index].strip()
         set_id = filename.split('_')[0]  # Assuming the set_id is the first part before '_'
+        if self.mode == 'train':
+            if set_id in self.set_dict:
+                set_id = self.set_dict[set_id]
+            else:
+                self.set_dict[set_id] = self.set
+                set_id = self.set
+                self.set += 1
         in_path = os.path.join(self.indir, filename + '.npy')
         data = np.load(in_path)
         

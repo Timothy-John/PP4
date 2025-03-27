@@ -76,7 +76,7 @@ def transfer_learning(**kwargs):
     opt.max_epoch = 200
     best_val_map = 0
     early_stop = 0
-    early_stop_patience = 25
+    early_stop_patience = 10
     best_CQTNet_path = None
     best_model_FF_path = None
     best_Final_FF_path = None

@@ -14,7 +14,7 @@ class IndianCover(Dataset):
         self.mode = mode
         self.set = 0
         self.set_dict = {}
-        if self.model=='330M_MERT' or self.model=='Hubert':
+        if self.model=='330M_MERT' or self.model=='HuBERT':
             if mode=='train':
                 self.indir = f'../CoverSongDetection_Timothy/{self.model}_train_embeddings.npy'
             elif mode=='val':

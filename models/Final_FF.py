@@ -10,7 +10,7 @@ class Final_FF(BasicModule):
     def __init__(self):
         super().__init__()
         self.fc0 = nn.Linear(400, 300)
-        self.fc1 = nn.Linear(300, 300)
+        self.fc1 = nn.Linear(300, 126)
 
     def forward(self, x,MERT_FF_out):
         x = torch.cat([x.squeeze(),MERT_FF_out.squeeze()]).unsqueeze(0)

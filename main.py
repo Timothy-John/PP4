@@ -54,6 +54,8 @@ def transfer_learning(**kwargs):
     
     # Training loop
     opt.max_epoch = 200
+    early_stop = 0
+    early_stop_patience = 25
     best_val_map = 0
     best_model_path = None
     
@@ -89,6 +91,11 @@ def transfer_learning(**kwargs):
             best_model_path = f"check_points/MERT_transfer_learning_epoch_{epoch+1}.pth"
             torch.save(NNmodel.state_dict(), best_model_path)
             print(f"New best model saved to {best_model_path}")
+            early_stop = 0
+        else:
+            early_stop += 1
+            if early_stop == early_stop_patience:
+                break
     
     # Load best model and evaluate on test set
     NNmodel.load_state_dict(torch.load(best_model_path))

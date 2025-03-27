@@ -11,8 +11,11 @@ import torch.nn.functional as F
 class IndianCover(Dataset):
     def __init__(self, mode='train', model='CQTNet', out_length=None):
         self.model = model
+        self.mode = mode
         if self.model=='MERT':
             if mode=='train':
+                self.set = 0
+                self.set_dict = {}
                 self.indir = '../CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
             elif mode=='val':
                 self.indir = '../CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
@@ -38,6 +41,13 @@ class IndianCover(Dataset):
     def __getitem__(self, index):
         filename = self.file_list[index].strip()
         set_id = filename.split('_')[0]  # Assuming the set_id is the first part before '_'
+        if self.mode == 'train':
+            if set_id in self.set_dict:
+                set_id = self.set_dict[set_id]
+            else:
+                self.set_dict[set_id] = self.set
+                set_id = self.set
+                self.set += 1
         if self.model=='CQTNet':
             in_path = os.path.join(self.indir, filename + '.npy')
             data = np.load(in_path)

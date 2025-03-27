@@ -10,6 +10,7 @@ import torch.nn.functional as F
 
 class IndianCoverCQT(Dataset):
     def __init__(self, mode='train', out_length=None):
+        # Changes the file paths for Vocal Separated Data
         self.indir = '../CoverSongDetection_Timothy/IndianCover_cqt_npy'
         self.mode = mode
         if self.mode=='train':

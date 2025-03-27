@@ -10,7 +10,7 @@ class CQTNet(BasicModule):
     def __init__(self):
         super().__init__()
         self.fc0 = nn.Linear(1024, 300)
-        self.fc1 = nn.Linear(300, 300)
+        self.fc1 = nn.Linear(300, 126)
 
     def forward(self, x):
         N = x.size()[0]

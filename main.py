@@ -14,6 +14,9 @@ from transformers import Wav2Vec2FeatureExtractor
 from transformers import AutoModel
 import librosa
 
+torch.manual_seed(0)
+np.random.seed(0)
+random.seed(0)
 
 def custom_collate_MERT(batch):
     data = [item[0][0] for item in batch]

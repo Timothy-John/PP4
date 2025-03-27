@@ -9,20 +9,22 @@ import PIL
 import torch.nn.functional as F
 
 class IndianCover(Dataset):
-    def __init__(self, mode='train', out_length=None):
+    def __init__(self, mode='train', model='CQTNet', out_length=None):
+        self.model = model
         self.mode = mode
-        if mode=='train':
+        if self.mode=='train':
           self.filepath = 'data/coversIndian_augmented_train_val.txt'
           self.set = 0
           self.set_dict = {}
           self.filepath = 'data/coversIndian_train_val.txt'
-          self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
-        elif mode=='val':
+          # Changes the file paths for Vocal Separated Data
+          self.indir = f'/content/drive/MyDrive/CoverSongDetection_Timothy/{self.model}_train_embeddings.npy'
+        elif self.mode=='val':
           self.filepath = 'data/coversIndian_train_val.txt'
-          self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
+          self.indir = f'/content/drive/MyDrive/CoverSongDetection_Timothy/{self.model}_train_embeddings.npy'
         else:
           self.filepath = 'data/coversIndian_test.txt'
-          self.indir = '/content/drive/MyDrive/CoverSongDetection_Timothy/330M_MERT_test_embeddings.npy'
+          self.indir = f'/content/drive/MyDrive/CoverSongDetection_Timothy/{self.model}_test_embeddings.npy'
         
         with open(self.filepath, 'r') as fp:
             self.file_list = [line.rstrip() for line in fp]

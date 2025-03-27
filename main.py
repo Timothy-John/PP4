@@ -31,7 +31,7 @@ def transfer_learning(**kwargs):
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {opt.device}")
 
-    model = 'MERT' #'HuBERT'
+    model = '330M_MERT' #'HuBERT'
     train_data = IndianCover('train', model)
     val_data = IndianCover('val', model)
     test_data = IndianCover('test', model)

@@ -8,12 +8,12 @@ from utility import *
 from tqdm import tqdm
 import numpy as np
 from cqt_loader import IndianCover
+import librosa
 import random
 
-from transformers import Wav2Vec2FeatureExtractor
-from transformers import Wav2Vec2Processor, HubertForCTC
-from transformers import AutoModel
-import librosa
+#from transformers import Wav2Vec2FeatureExtractor
+#from transformers import Wav2Vec2Processor, HubertForCTC
+#from transformers import AutoModel
 
 torch.manual_seed(0)
 np.random.seed(0)

@@ -72,7 +72,7 @@ def transfer_learning(**kwargs):
     best_val_map = 0
     best_model_path = None
     early_stop = 0
-    early_stop_patience = 10
+    early_stop_patience = 25
 
     for epoch in range(num_epochs):
         model.train()
@@ -120,7 +120,7 @@ def fine_tune_model(model, optimizer, train_loader, val_loader, test_loader, opt
     best_val_map = 0
     best_model_path = None
     early_stop = 0
-    early_stop_patience = 10
+    early_stop_patience = 25
 
     #Convert to Embedding Layer
     #model.fc1 = nn.Linear(300, 300).to(opt.device)

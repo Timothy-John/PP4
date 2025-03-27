@@ -12,11 +12,11 @@ class IndianCoverCQT(Dataset):
     def __init__(self, mode='train', out_length=None):
         self.indir = '../CoverSongDetection_Timothy/IndianCover_cqt_npy'
         self.mode = mode
-        if mode=='train':
+        if self.mode=='train':
           self.filepath = 'data/coversIndian_augmented_train_val.txt'
           self.set = 0
           self.set_dict = {}
-        elif mode=='val':
+        elif self.mode=='val':
           self.filepath = 'data/coversIndian_augmented_train_val.txt'
         else:
           self.filepath = 'data/coversIndian_test.txt'

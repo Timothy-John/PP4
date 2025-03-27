@@ -30,18 +30,17 @@ def transfer_learning(**kwargs):
     opt.num_workers = 2
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {opt.device}")
-    
-    train_data = IndianCover('train')
-    val_data = IndianCover('val')
-    test_data = IndianCover('test')
+
+    model = 'MERT' #'HuBERT'
+    train_data = IndianCover('train', model)
+    val_data = IndianCover('val', model)
+    test_data = IndianCover('test', model)
 
     train_loader = DataLoader(train_data, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers, collate_fn=custom_collate)
     val_loader = DataLoader(val_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=1, collate_fn=custom_collate)
 
-    #MERT Embeddings already loaded in GDrive
-    #MERTmodel = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True, device_map=opt.device)
-    #MERTprocessor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True, device_map=opt.device)
+    #MERT\HuBERT Embeddings already loaded in GDrive
 
     NNmodel = getattr(models, 'CQTNet')()
     NNmodel = NNmodel.to(opt.device)

@@ -12,10 +12,10 @@ class IndianCover(Dataset):
     def __init__(self, mode='train', model='CQTNet', out_length=None):
         self.model = model
         self.mode = mode
+        self.set = 0
+        self.set_dict = {}
         if self.model=='MERT':
             if mode=='train':
-                self.set = 0
-                self.set_dict = {}
                 self.indir = '../CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'
             elif mode=='val':
                 self.indir = '../CoverSongDetection_Timothy/330M_MERT_train_embeddings.npy'

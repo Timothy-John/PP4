@@ -37,7 +37,7 @@ def transfer_learning(**kwargs):
     opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {opt.device}")
 
-    embed_model = '330M_MERT' #'Hubert'
+    embed_model = '330M_MERT' #'HuBERT'
     train_CQTNet_data = IndianCover('train', 'CQTNet')
     train_model_data = IndianCover('train', embed_model)
     val_CQTNet_data = IndianCover('val', 'CQTNet')

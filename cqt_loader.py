@@ -16,13 +16,13 @@ class IndianCover(Dataset):
         self.set_dict = {}
         if self.model=='330M_MERT' or self.model=='HuBERT':
             if mode=='train':
-                self.indir = f'../CoverSongDetection_Timothy/{self.model}_train_embeddings.npy'
+                self.indir = f'../CoverSongDetection_Timothy/{self.model}_train_embeddings_vocal_separated.npy'
             elif mode=='val':
-                self.indir = f'../CoverSongDetection_Timothy/{self.model}_train_embeddings.npy'
+                self.indir = f'../CoverSongDetection_Timothy/{self.model}_train_embeddings_vocal_separated.npy'
             else:
-                self.indir = f'../CoverSongDetection_Timothy/{self.model}_test_embeddings.npy'
+                self.indir = f'../CoverSongDetection_Timothy/{self.model}_test_embeddings_vocal_separated.npy'
         else:
-            self.indir = '../CoverSongDetection_Timothy/IndianCover_cqt_npy'
+            self.indir = '../CoverSongDetection_Timothy/VocalSeparated_IndianCover_cqt_npy'
         
         if self.mode=='train':
           self.filepath = 'data/coversIndian_train_val.txt'
